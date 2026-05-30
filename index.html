@@ -32,17 +32,16 @@
             align-items: center;
             padding: 15px;
             overflow-x: hidden;
-            font-size: 16px; /* Базовый размер */
+            font-size: 16px;
         }
 
-        /* --- App Container --- */
         .app-wrapper {
             width: 100%;
             max-width: 850px;
             background: var(--glass);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
-            border-radius: clamp(15px, 4vw, 24px); /* Адаптивное скругление */
+            border-radius: clamp(15px, 4vw, 24px);
             border: 1px solid var(--glass-border);
             box-shadow: var(--shadow);
             overflow: hidden;
@@ -83,7 +82,6 @@
             white-space: nowrap;
         }
         
-        /* Счетчик ошибок в шапке */
         .error-counter {
             font-size: clamp(12px, 2.5vw, 14px);
             font-weight: 700;
@@ -91,7 +89,7 @@
             background: rgba(255, 255, 255, 0.5);
             padding: 4px 10px;
             border-radius: 8px;
-            display: none; /* Скрыт по умолчанию */
+            display: none;
             align-items: center;
             gap: 5px;
         }
@@ -218,7 +216,7 @@
             background: white;
             border-radius: clamp(12px, 3vw, 20px);
             padding: clamp(15px, 4vw, 30px);
-            font-size: clamp(16px, 3.5vw, 20px); /* Адаптивный шрифт текста */
+            font-size: clamp(16px, 3.5vw, 20px);
             line-height: 1.6;
             margin-bottom: clamp(15px, 4vw, 30px);
             flex: 1;
@@ -309,7 +307,6 @@
         .status-correct { background: rgba(0, 184, 148, 0.2); color: var(--success); }
         .status-wrong { background: rgba(214, 48, 49, 0.2); color: var(--danger); }
 
-        /* Loader */
         .loader {
             display: inline-block;
             width: 20px;
@@ -391,7 +388,7 @@
             </div>
         </div>
 
-        <h3 style="margin-bottom:15px; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--text-light);">История ответов</h3>
+        <h3 style="margin-bottom:15px; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--text-light);">Результаты финального теста</h3>
         <table id="results-table">
             <thead><tr><th>Вопрос</th><th>Ответ</th><th>Статус</th></tr></thead>
             <tbody></tbody>
@@ -408,7 +405,7 @@
         mode: 'reading',
         timer: null,
         seconds: 0,
-        currentErrors: 0, // Счетчик ошибок для текущего фрагмента
+        currentErrors: 0,
         results: { times: [], answers: [] }
     };
 
@@ -542,7 +539,7 @@
     function showFragment() {
         const frag = App.fragments[App.currentFragIdx];
         
-        // Сброс счетчика ошибок при показе нового фрагмента
+        // Сброс счетчика ошибок
         App.currentErrors = 0;
         updateErrorUI(false);
         
@@ -576,18 +573,14 @@
     function startQuestions() {
         clearInterval(App.timer);
         const frag = App.fragments[App.currentFragIdx];
-        // Сохраняем время, затраченное на чтение
-        // Но если мы вернулись к чтению после ошибок, возможно, не стоит перезаписывать время?
-        // Для простоты оставим: каждое чтение фиксируется.
         App.results.times.push({spent: App.seconds, exc: frag.tExc, good: frag.tGood});
         
         App.mode = 'quiz';
         App.currentQIdx = 0;
         
-        // Визуал
         document.getElementById('header-badge').innerText = "Тест";
         document.getElementById('header-badge').style.background = "#e84393";
-        updateErrorUI(true); // Показать счетчик ошибок
+        updateErrorUI(true); // Показать счетчик ошибок (только для промежуточного)
         
         renderQuestion();
     }
@@ -603,10 +596,8 @@
     function renderQuestion() {
         const list = (App.mode === 'quiz') ? App.fragments[App.currentFragIdx].questions : App.fragments.flatMap(f => f.questions);
         
-        // Проверка на конец списка вопросов
         if (App.currentQIdx >= list.length) {
             if(App.mode === 'quiz') {
-                // Фрагмент пройден успешно
                 if(App.currentFragIdx < App.fragments.length - 1) {
                     App.currentFragIdx++;
                     App.mode = 'reading';
@@ -619,7 +610,7 @@
                     renderPips();
                     document.getElementById('header-step').innerText = "Итог";
                     document.getElementById('header-badge').innerText = "Финал";
-                    updateErrorUI(false); // Скрываем счетчик ошибок в финале (по желанию можно оставить)
+                    updateErrorUI(false); // Скрыть счетчик ошибок
                     document.getElementById('content-area').innerHTML = "<div style='text-align:center; padding:60px 20px;'><h2 style='font-size:clamp(20px, 5vw, 28px); margin-bottom:10px;'>Финальный тест</h2><p>Проверка знаний по всему материалу.</p></div>";
                     document.getElementById('controls-area').innerHTML = `<button class="btn" onclick="renderQuestion()">Начать</button>`;
                 }
@@ -658,6 +649,7 @@
         let val = "", correct = false;
         const fb = document.getElementById('fb');
 
+        // Получение ответа
         if (q.type === 'choice') {
             const sel = document.querySelector('.option-item.selected');
             if(!sel) { fb.innerText = "Выберите вариант"; fb.className = "feedback-msg fb-error"; return; }
@@ -669,60 +661,80 @@
             correct = val.toLowerCase() === q.answer;
         }
 
-        if (correct) {
-            fb.innerText = "Отлично!";
-            fb.className = "feedback-msg fb-success";
-            App.results.answers.push({stage: App.mode, text: q.text, ans: val, correct: true});
-            
-            // Сбрасываем счетчик ошибок при правильном ответе (опционально, можно сбрасывать только при переходе дальше)
-            // Здесь логика: ошибся 4 раза подряд -> возврат. Если ответил правильно, счетчик можно не сбрасывать, 
-            // но для "прохождения" нужно отвечать правильно. 
-            // Сбросим счетчик ошибок, так как "серия" прервана.
-            App.currentErrors = 0;
-            updateErrorUI(true);
-
-            App.currentQIdx++;
-            setTimeout(renderQuestion, 800);
-        } else {
-            // Логика ошибки
-            App.currentErrors++;
-            updateErrorUI(true);
-            
-            // Визуальная подсветка
-            if(q.type === 'choice') {
+        // Логика для Финального теста (Одна попытка)
+        if (App.mode === 'final') {
+            // Визуальная обратная связь
+            if (q.type === 'choice') {
                 document.querySelectorAll('.option-item').forEach(el => {
+                    el.style.pointerEvents = 'none'; // Блокируем выбор
                     const isCorrectOpt = q.options.find(o => o.text === el.innerText && o.correct);
-                    if (isCorrectOpt) el.classList.add('correct');
-                    if (el.classList.contains('selected')) el.classList.add('wrong');
-                    el.style.pointerEvents = 'none';
+                    if (isCorrectOpt) el.classList.add('correct'); // Подсветка правильного
+                    if (el.classList.contains('selected') && !correct) el.classList.add('wrong'); // Подсветка ошибки
                 });
             } else {
-                document.getElementById('ans-input').style.borderColor = 'var(--danger)';
+                const input = document.getElementById('ans-input');
+                input.disabled = true;
+                input.style.borderColor = correct ? 'var(--success)' : 'var(--danger)';
             }
 
-            // Проверка лимита ошибок (только для промежуточных тестов)
-            if (App.mode === 'quiz' && App.currentErrors >= 4) {
-                fb.innerText = "Слишком много ошибок. Перечитайте текст.";
-                fb.className = "feedback-msg fb-error";
+            // Сохраняем результат
+            App.results.answers.push({stage: 'final', text: q.text, ans: val, correct: correct});
+            
+            // Показываем сообщение и переходим дальше
+            fb.innerText = correct ? "Верно!" : "Неверно";
+            fb.className = correct ? "feedback-msg fb-success" : "feedback-msg fb-error";
+            
+            App.currentQIdx++;
+            setTimeout(renderQuestion, 1200); // Пауза чтобы увидеть результат
+
+        } 
+        // Логика для Промежуточного теста (Обучение)
+        else if (App.mode === 'quiz') {
+            if (correct) {
+                fb.innerText = "Отлично!";
+                fb.className = "feedback-msg fb-success";
+                App.results.answers.push({stage: 'quiz', text: q.text, ans: val, correct: true});
                 
-                setTimeout(() => {
-                    alert("Допущено 4 ошибки. Необходимо перечитать фрагмент.");
-                    // Возврат к чтению текущего фрагмента
-                    showFragment(); 
-                }, 1000);
+                App.currentErrors = 0; // Сброс счетчика ошибок при успехе
+                updateErrorUI(true);
+                
+                App.currentQIdx++;
+                setTimeout(renderQuestion, 800);
             } else {
-                fb.innerText = "Неверно. Попробуйте еще раз.";
-                fb.className = "feedback-msg fb-error";
+                // Ошибка в обучении
+                App.currentErrors++;
+                updateErrorUI(true);
                 
-                // Разрешаем повторную попытку (убираем блокировку для choice)
-                if(q.type === 'choice') {
+                if (App.currentErrors >= 4) {
+                    fb.innerText = "Слишком много ошибок.";
+                    fb.className = "feedback-msg fb-error";
                     setTimeout(() => {
+                        alert("Допущено 4 ошибки. Необходимо перечитать фрагмент.");
+                        showFragment(); 
+                    }, 1000);
+                } else {
+                    fb.innerText = "Неверно. Попробуйте еще раз.";
+                    fb.className = "feedback-msg fb-error";
+                    
+                    // Визуальная подсветка и разрешение повтора
+                    if(q.type === 'choice') {
                         document.querySelectorAll('.option-item').forEach(el => {
-                           el.style.pointerEvents = 'auto';
-                           el.classList.remove('correct', 'wrong', 'selected');
+                            el.style.pointerEvents = 'auto';
+                            if(el.classList.contains('selected')) {
+                                el.classList.add('wrong');
+                                setTimeout(() => {
+                                    el.classList.remove('wrong', 'selected');
+                                    fb.style.display = 'none';
+                                }, 1000);
+                            }
                         });
-                        fb.style.display = 'none';
-                    }, 1500);
+                    } else {
+                         document.getElementById('ans-input').style.borderColor = 'var(--danger)';
+                         setTimeout(() => {
+                             document.getElementById('ans-input').style.borderColor = 'rgba(0,0,0,0.1)';
+                             fb.style.display = 'none';
+                         }, 1000);
+                    }
                 }
             }
         }
@@ -733,12 +745,14 @@
         document.getElementById('screen-process').style.display = 'none';
         document.getElementById('screen-result').style.display = 'flex';
         
+        // Фильтруем только финальные ответы
+        const finalAnswers = App.results.answers.filter(a => a.stage === 'final');
         const totalSec = App.results.times.reduce((s,t) => s+t.spent, 0);
-        const errs = App.results.answers.filter(a => !a.correct).length;
+        const errs = finalAnswers.filter(a => !a.correct).length;
         
         document.getElementById('final-fio').innerText = document.getElementById('input-fio').value;
         
-        // Grade calculation
+        // Расчет оценки (пример: 5, 4, 3, 2)
         let grade = 5;
         if(errs > 0) grade = 4;
         if(errs > 1) grade = 3;
@@ -750,15 +764,20 @@
 
         const tbody = document.querySelector('#results-table tbody');
         tbody.innerHTML = '';
-        App.results.answers.forEach(a => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${a.text}</td>
-                <td>${a.ans}</td>
-                <td><span class="status-badge ${a.correct ? 'status-correct' : 'status-wrong'}">${a.correct ? 'Верно' : 'Ошибка'}</span></td>
-            `;
-            tbody.appendChild(tr);
-        });
+        
+        if (finalAnswers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Нет данных</td></tr>';
+        } else {
+            finalAnswers.forEach(a => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${a.text}</td>
+                    <td>${a.ans}</td>
+                    <td><span class="status-badge ${a.correct ? 'status-correct' : 'status-wrong'}">${a.correct ? 'Верно' : 'Ошибка'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
     }
 </script>
 </body>
