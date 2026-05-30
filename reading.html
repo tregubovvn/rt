@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система Активного Чтения</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #eab308;
+            --text-main: #1f2937;
+            --bg-color: #f3f4f6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .app-wrapper {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: block; 
+            min-height: 85vh;
+            position: relative;
+        }
+
+        /* --- Header --- */
+        .header-bar {
+            padding: 16px 24px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            display: none; /* Скрыт по умолчанию */
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-title { font-weight: 600; color: #6b7280; font-size: 14px; }
+        
+        .progress-pips { display: flex; gap: 8px; }
+        .pip {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            transition: all 0.3s;
+        }
+        .pip.active { background: var(--primary); transform: scale(1.2); }
+        .pip.done { background: var(--success); }
+
+        /* --- Screens --- */
+        /* По умолчанию экраны скрыты */
+        .screen {
+            padding: 40px;
+            display: none;
+            min-height: 400px;
+        }
+
+        /* --- UI Elements --- */
+        h1 { font-size: 28px; margin-bottom: 8px; }
+        p.subtitle { color: #6b7280; margin-bottom: 32px; }
+        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 14px; }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: var(--primary-dark); }
+        .btn:disabled { background: #93c5fd; cursor: not-allowed; }
+        .btn-secondary { background: transparent; color: var(--text-main); border: 1px solid #e5e7eb; margin-top: 12px; }
+        .btn-secondary:hover { background: #f3f4f6; }
+
+        /* --- Reading UI --- */
+        .timer-bar { height: 4px; background: #e5e7eb; margin-bottom: 24px; border-radius: 2px; }
+        .timer-fill { height: 100%; width: 0%; background: var(--success); transition: width 1s linear; }
+
+        .content-box {
+            background: #f8fafc;
+            border-left: 4px solid var(--primary);
+            padding: 24px;
+            border-radius: 0 8px 8px 0;
+            font-size: 18px;
+            line-height: 1.7;
+            margin-bottom: 24px;
+            min-height: 200px; 
+            color: #111;
+        }
+
+        /* --- Questions UI --- */
+        .options-list { display: flex; flex-direction: column; gap: 10px; }
+        .option-item { 
+            padding: 12px; 
+            border: 1px solid #e5e7eb; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            background: white; 
+            transition: all 0.2s;
+        }
+        .option-item:hover { border-color: var(--primary); background: #eff6ff; }
+        .option-item.selected { background: #dbeafe; border-color: var(--primary); font-weight: 600; }
+        
+        .feedback-msg { padding: 10px; border-radius: 6px; margin-bottom: 12px; display: none; font-size: 14px; }
+        .fb-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; display: block; }
+        .fb-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; display: block; }
+        
+        .result-header { text-align: center; margin-bottom: 32px; }
+        .grade-circle { 
+            width: 80px; height: 80px; 
+            background: var(--primary); color: white; 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 32px; font-weight: 700; 
+            margin: 0 auto 16px; 
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+
+    </style>
+</head>
+<body>
+
+<div class="app-wrapper">
+    <!-- Header -->
+    <div class="header-bar" id="main-header">
+        <div class="header-title" id="header-step">Фрагмент 1</div>
+        <div class="progress-pips" id="pips-container"></div>
+    </div>
+
+    <!-- Screen 1: Auth -->
+    <!-- ДОБАВЛЕНО style="display: block;" ЧТОБЫ ОН БЫЛ ВИДЕН СРАЗУ -->
+    <div class="screen" id="screen-auth" style="display: block;">
+        <h1>Активное чтение</h1>
+        <p class="subtitle">Введите данные для начала</p>
+        
+        <label>ФИО студента</label>
+        <input type="text" id="input-fio" placeholder="Иванов Иван Иванович">
+
+        <label style="margin-top:10px;">Источник данных</label>
+        <input type="file" id="file-input" accept=".xml" style="display:none;">
+        <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">Выбрать XML</button>
+        <div style="font-size:13px; color:#6b7280; text-align:center; margin:8px 0;" id="file-status">Файл не выбран</div>
+
+        <button class="btn" id="btn-start" disabled onclick="startTest()">Начать</button>
+        <button class="btn btn-secondary" onclick="loadDemoData()">Демо-данные</button>
+    </div>
+
+    <!-- Screen 2: Process -->
+    <div class="screen" id="screen-process">
+        <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+        <div class="content-box" id="content-area">Загрузка...</div>
+        <div id="controls-area"></div>
+    </div>
+
+    <!-- Screen 3: Results -->
+    <div class="screen" id="screen-result">
+        <div class="result-header">
+            <div class="grade-circle" id="final-grade-val">5</div>
+            <h1 id="final-fio">ФИО</h1>
+        </div>
+        <div style="display:flex; gap:15px; margin-bottom:20px;">
+            <div style="flex:1; background:#f8fafc; padding:15px; border-radius:8px; text-align:center;">
+                <div style="font-weight:bold;" id="stat-time">0с</div>
+                <div style="font-size:12px; color:#6b7280;">Время</div>
+            </div>
+            <div style="flex:1; background:#f8fafc; padding:15px; border-radius:8px; text-align:center;">
+                <div style="font-weight:bold;" id="stat-errors">0</div>
+                <div style="font-size:12px; color:#6b7280;">Ошибок</div>
+            </div>
+        </div>
+        <h3>Ответы</h3>
+        <table id="results-table">
+            <thead><tr><th>Вопрос</th><th>Ответ</th><th>Статус</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // --- State ---
+    const App = {
+        fragments: [],
+        currentFragIdx: 0,
+        currentQIdx: 0,
+        mode: 'reading',
+        timer: null,
+        seconds: 0,
+        results: { times: [], answers: [] }
+    };
+
+    // --- Logic ---
+    document.getElementById('file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            parseXML(ev.target.result);
+            document.getElementById('file-status').innerText = "✓ " + file.name;
+            document.getElementById('btn-start').disabled = false;
+        };
+        reader.readAsText(file);
+    });
+
+    function loadDemoData() {
+        // Пример XML
+        const demo = `<readingTest>
+            <fragment timeExcellent="20" timeGood="40">
+                <text>Современное образование требует новых подходов. Активное чтение — это методика, позволяющая глубже понимать материал за счет анализа текста. Студент становится исследователем.</text>
+                <questions>
+                    <question type="choice"><text>Что требует образование?</text><options><option correct="true">Новых подходов</option><option>Старых методов</option></options></question>
+                    <question type="input"><text>Кем становится студент? (Одно слово)</text><answer>исследователем</answer></question>
+                </questions>
+            </fragment>
+            <fragment timeExcellent="30" timeGood="50">
+                <text>Важным элементом является тестирование. Это улучшает память и помогает структурировать знания.</text>
+                <questions>
+                    <question type="choice"><text>Что улучшает память?</text><options><option>Сон</option><option correct="true">Тестирование</option></options></question>
+                </questions>
+            </fragment>
+        </readingTest>`;
+        parseXML(demo);
+        document.getElementById('file-status').innerText = "✓ Демо загружено";
+        document.getElementById('btn-start').disabled = false;
+    }
+
+    function parseXML(str) {
+        const xml = new DOMParser().parseFromString(str, "text/xml");
+        App.fragments = [];
+        xml.querySelectorAll('fragment').forEach(f => {
+            const txt = f.querySelector('text').textContent;
+            const qList = [];
+            f.querySelectorAll('question').forEach(q => {
+                const obj = { type: q.getAttribute('type'), text: q.querySelector('text').textContent };
+                if (obj.type === 'choice') {
+                    obj.options = [];
+                    q.querySelectorAll('option').forEach(o => obj.options.push({text: o.textContent, correct: o.getAttribute('correct')==='true'}));
+                } else {
+                    obj.answer = q.querySelector('answer').textContent.toLowerCase().trim();
+                }
+                qList.push(obj);
+            });
+            App.fragments.push({
+                text: txt,
+                tExc: parseInt(f.getAttribute('timeExcellent')) || 30,
+                tGood: parseInt(f.getAttribute('timeGood')) || 60,
+                questions: qList
+            });
+        });
+    }
+
+    function startTest() {
+        if (!document.getElementById('input-fio').value.trim()) return alert("Введите ФИО");
+        if (App.fragments.length === 0) return alert("Нет данных");
+
+        // Переключение экранов
+        document.getElementById('screen-auth').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('screen-process').style.display = 'block';
+        
+        document.getElementById('main-header').style.display = 'flex';
+        
+        App.currentFragIdx = 0;
+        App.results = { times: [], answers: [] };
+        
+        renderPips();
+        showFragment();
+    }
+
+    function renderPips() {
+        const container = document.getElementById('pips-container');
+        container.innerHTML = '';
+        for (let i = 0; i < App.fragments.length + 1; i++) {
+            const div = document.createElement('div');
+            div.className = 'pip';
+            if (i < App.currentFragIdx) div.classList.add('done');
+            if (i === App.currentFragIdx) div.classList.add('active');
+            container.appendChild(div);
+        }
+    }
+
+    function showFragment() {
+        const frag = App.fragments[App.currentFragIdx];
+        
+        document.getElementById('header-step').innerText = "Чтение: Фрагмент " + (App.currentFragIdx + 1);
+        
+        clearInterval(App.timer);
+        App.seconds = 0;
+        const fill = document.getElementById('timer-fill');
+        fill.style.width = '0%';
+        fill.style.background = 'var(--success)';
+        
+        App.timer = setInterval(() => {
+            App.seconds++;
+            let pct = (App.seconds / frag.tGood) * 100;
+            fill.style.width = Math.min(100, pct) + '%';
+            if(App.seconds > frag.tGood) fill.style.background = 'var(--danger)';
+            else if(App.seconds > frag.tExc) fill.style.background = 'var(--warning)';
+        }, 1000);
+
+        // Вставка текста
+        const content = document.getElementById('content-area');
+        content.innerHTML = frag.text;
+        
+        document.getElementById('controls-area').innerHTML = `<button class="btn" onclick="startQuestions()">Я прочитал(а)</button>`;
+    }
+
+    function startQuestions() {
+        clearInterval(App.timer);
+        const frag = App.fragments[App.currentFragIdx];
+        App.results.times.push({spent: App.seconds, exc: frag.tExc, good: frag.tGood});
+        App.mode = 'quiz';
+        App.currentQIdx = 0;
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        const list = (App.mode === 'quiz') ? App.fragments[App.currentFragIdx].questions : App.fragments.flatMap(f => f.questions);
+        if (App.currentQIdx >= list.length) {
+            if(App.mode === 'quiz') {
+                if(App.currentFragIdx < App.fragments.length - 1) {
+                    App.currentFragIdx++;
+                    App.mode = 'reading';
+                    renderPips();
+                    showFragment();
+                } else {
+                    App.mode = 'final';
+                    App.currentQIdx = 0;
+                    renderPips();
+                    document.getElementById('header-step').innerText = "Итоговый тест";
+                    document.getElementById('content-area').innerHTML = "<div style='text-align:center; padding:40px;'><h2>Финальный тест</h2></div>";
+                    document.getElementById('controls-area').innerHTML = `<button class="btn" onclick="renderQuestion()">Начать</button>`;
+                }
+            } else {
+                finishTest();
+            }
+            return;
+        }
+
+        const q = list[App.currentQIdx];
+        document.getElementById('header-step').innerText = "Вопрос " + (App.currentQIdx + 1);
+        
+        let html = `<div style="font-weight:bold; margin-bottom:10px;">${q.text}</div>`;
+        if (q.type === 'choice') {
+            html += '<div class="options-list">';
+            q.options.forEach(o => html += `<div class="option-item" onclick="selectOption(this)">${o.text}</div>`);
+            html += '</div>';
+        } else {
+            html += `<input type="text" id="ans-input" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-top:5px;">`;
+        }
+        document.getElementById('content-area').innerHTML = html;
+        document.getElementById('controls-area').innerHTML = `
+            <div class="feedback-msg" id="fb"></div>
+            <button class="btn" onclick="submitAnswer()">Ответить</button>
+        `;
+    }
+
+    function selectOption(el) {
+        // Снимаем выделение со всех
+        el.parentElement.querySelectorAll('.option-item').forEach(e => e.classList.remove('selected'));
+        // Выделяем текущий
+        el.classList.add('selected');
+    }
+
+    function submitAnswer() {
+        const list = (App.mode === 'quiz') ? App.fragments[App.currentFragIdx].questions : App.fragments.flatMap(f => f.questions);
+        const q = list[App.currentQIdx];
+        let val = "", correct = false;
+        const fb = document.getElementById('fb');
+
+        if (q.type === 'choice') {
+            const sel = document.querySelector('.option-item.selected');
+            if(!sel) { fb.innerText = "Выберите ответ"; fb.className = "feedback-msg fb-error"; return; }
+            val = sel.innerText;
+            correct = q.options.find(o => o.text === val && o.correct);
+        } else {
+            val = document.getElementById('ans-input').value.trim();
+            if(!val) { fb.innerText = "Введите ответ"; fb.className = "feedback-msg fb-error"; return; }
+            correct = val.toLowerCase() === q.answer;
+        }
+
+        if (correct) {
+            fb.innerText = "Верно!";
+            fb.className = "feedback-msg fb-success";
+            App.results.answers.push({stage: App.mode, text: q.text, ans: val, correct: true});
+            App.currentQIdx++;
+            setTimeout(renderQuestion, 800);
+        } else {
+            fb.innerText = "Неверно. Попробуйте еще раз.";
+            fb.className = "feedback-msg fb-error";
+        }
+    }
+
+    function finishTest() {
+        document.getElementById('main-header').style.display = 'none';
+        document.getElementById('screen-process').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'block';
+        
+        const totalSec = App.results.times.reduce((s,t) => s+t.spent, 0);
+        const errs = App.results.answers.filter(a => !a.correct).length;
+        
+        document.getElementById('final-fio').innerText = document.getElementById('input-fio').value;
+        document.getElementById('final-grade-val').innerText = Math.max(2, 5 - errs);
+        document.getElementById('stat-time').innerText = totalSec + "с";
+        document.getElementById('stat-errors').innerText = errs;
+
+        const tbody = document.querySelector('#results-table tbody');
+        tbody.innerHTML = '';
+        App.results.answers.forEach(a => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${a.text}</td>
+                <td>${a.ans}</td>
+                <td style="color:${a.correct ? 'var(--success)' : 'var(--danger)'}">${a.correct ? 'Верно' : 'Ошибка'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+</body>
+</html>
