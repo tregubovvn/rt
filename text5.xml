@@ -1,4 +1,3 @@
-```xml
 <readingTest>
     <!-- Фрагмент 1 -->
     <fragment timeExcellent="35" timeGood="70">
@@ -279,4 +278,3 @@
         </questions>
     </fragment>
 </readingTest>
-```
