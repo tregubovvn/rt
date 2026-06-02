@@ -331,7 +331,6 @@
             <span class="badge" id="header-badge">Чтение</span>
         </div>
         
-        <!-- Счетчик ошибок -->
         <div class="error-counter" id="error-counter-box">
             Ошибки: <span id="error-count">0</span>/4
         </div>
@@ -358,8 +357,9 @@
             <div style="font-size:13px; color:var(--text-light); text-align:center; margin:8px 0;" id="file-status">Файл не выбран</div>
         </div>
 
-        <button class="btn" id="btn-start" disabled onclick="startTest()">Начать тестирование</button>
-        <button class="btn btn-secondary" onclick="loadDemoData()">Или загрузить демо</button>
+        <button class="btn" id="btn-start" disabled onclick="startTest()">Начать чтение</button>
+        <!-- Новая кнопка для пропуска чтения -->
+        <button class="btn btn-secondary" id="btn-skip" disabled onclick="startFinalTestDirectly()">Финальный тест (пропустить чтение)</button>
     </div>
 
     <!-- Screen 2: Process -->
@@ -397,6 +397,52 @@
 </div>
 
 <script>
+    // --- Jaro-Winkler Algorithm Implementation ---
+    function jaroWinkler(s1, s2) {
+        if (s1 === s2) return 1.0;
+
+        const matchWindow = Math.max(s1.length, s2.length) / 2 - 1;
+        let matches = 0;
+        let transpositions = 0;
+
+        const s1Matches = new Array(s1.length).fill(false);
+        const s2Matches = new Array(s2.length).fill(false);
+
+        for (let i = 0; i < s1.length; i++) {
+            const start = Math.max(0, i - Math.floor(matchWindow));
+            const end = Math.min(i + Math.floor(matchWindow) + 1, s2.length);
+
+            for (let j = start; j < end; j++) {
+                if (s2Matches[j] || s1[i] !== s2[j]) continue;
+                s1Matches[i] = true;
+                s2Matches[j] = true;
+                matches++;
+                break;
+            }
+        }
+
+        if (matches === 0) return 0.0;
+
+        let k = 0;
+        for (let i = 0; i < s1.length; i++) {
+            if (!s1Matches[i]) continue;
+            while (!s2Matches[k]) k++;
+            if (s1[i] !== s2[k]) transpositions++;
+            k++;
+        }
+
+        const jaro = (matches / s1.length + matches / s2.length + (matches - transpositions / 2) / matches) / 3;
+        
+        // Winkler modification
+        let prefix = 0;
+        for (let i = 0; i < Math.min(s1.length, s2.length, 4); i++) {
+            if (s1[i] === s2[i]) prefix++;
+            else break;
+        }
+
+        return jaro + prefix * 0.1 * (1 - jaro);
+    }
+
     // --- State ---
     const App = {
         fragments: [],
@@ -429,7 +475,7 @@
                     parseXML(text);
                     if (App.fragments.length > 0) {
                         statusEl.innerHTML = "✓ Файл загружен через URL";
-                        document.getElementById('btn-start').disabled = false;
+                        enableButtons();
                         btnText.innerHTML = "Файл готов";
                     } else {
                         throw new Error("Пустой файл");
@@ -450,30 +496,14 @@
         reader.onload = (ev) => {
             parseXML(ev.target.result);
             document.getElementById('file-status').innerText = "✓ " + file.name;
-            document.getElementById('btn-start').disabled = false;
+            enableButtons();
         };
         reader.readAsText(file);
     });
 
-    function loadDemoData() {
-        const demo = `<readingTest>
-            <fragment timeExcellent="20" timeGood="40">
-                <text>Современное образование требует новых подходов. Активное чтение — это методика, позволяющая глубже понимать материал за счет анализа текста. Студент становится исследователем, а не просто потребителем информации. Это критически важный навык в 21 веке.</text>
-                <questions>
-                    <question type="choice"><text>Какую роль предлагает активное чтение студенту?</text><options><option>Наблюдателя</option><option correct="true">Исследователя</option><option>Критика</option></options></question>
-                    <question type="input"><text>В каком веке мы живем? (Цифра)</text><answer>21</answer></question>
-                </questions>
-            </fragment>
-            <fragment timeExcellent="30" timeGood="50">
-                <text>Важным элементом является тестирование. Это улучшает память и помогает структурировать знания. Повторное тестирование закрепляет результат лучше, чем простое перечитывание материала.</text>
-                <questions>
-                    <question type="choice"><text>Что лучше закрепляет результат?</text><options><option>Перечитывание</option><option correct="true">Тестирование</option><option>Сон</option></options></question>
-                </questions>
-            </fragment>
-        </readingTest>`;
-        parseXML(demo);
-        document.getElementById('file-status').innerText = "✓ Демо-данные загружены";
+    function enableButtons() {
         document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-skip').disabled = false;
     }
 
     function parseXML(str) {
@@ -487,12 +517,17 @@
                 const txt = f.querySelector('text').textContent;
                 const qList = [];
                 f.querySelectorAll('question').forEach(q => {
-                    const obj = { type: q.getAttribute('type'), text: q.querySelector('text').textContent };
+                    const obj = { 
+                        type: q.getAttribute('type'), 
+                        text: q.querySelector('text').textContent,
+                        // Считываем порог схожести, по умолчанию 0.7 (70%)
+                        similarity: parseFloat(q.getAttribute('similarity')) || 0.7 
+                    };
                     if (obj.type === 'choice') {
                         obj.options = [];
                         q.querySelectorAll('option').forEach(o => obj.options.push({text: o.textContent, correct: o.getAttribute('correct')==='true'}));
                     } else {
-                        obj.answer = q.querySelector('answer').textContent.toLowerCase().trim();
+                        obj.answer = q.querySelector('answer').textContent.trim().toLowerCase();
                     }
                     qList.push(obj);
                 });
@@ -507,6 +542,8 @@
             alert("Ошибка парсинга XML");
         }
     }
+
+    // --- Logic Controllers ---
 
     function startTest() {
         if (!document.getElementById('input-fio').value.trim()) return alert("Введите ФИО");
@@ -524,6 +561,32 @@
         showFragment();
     }
 
+    function startFinalTestDirectly() {
+        if (!document.getElementById('input-fio').value.trim()) return alert("Введите ФИО");
+        if (App.fragments.length === 0) return alert("Нет данных");
+
+        document.getElementById('screen-auth').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('screen-process').style.display = 'flex';
+        document.getElementById('main-header').style.display = 'flex';
+
+        // Настройка состояния для финального теста
+        App.mode = 'final';
+        App.currentQIdx = 0;
+        App.currentFragIdx = App.fragments.length; // Индикатор конца чтения
+        App.results = { times: [], answers: [] };
+
+        renderPips();
+        document.getElementById('header-step').innerText = "Итог";
+        document.getElementById('header-badge').innerText = "Финал";
+        document.getElementById('header-badge').style.background = "#e84393";
+        updateErrorUI(false);
+        
+        document.getElementById('timer-fill').style.width = '0%';
+        document.getElementById('content-area').innerHTML = "<div style='text-align:center; padding:60px 20px;'><h2>Финальный тест</h2><p>Проверка знаний по всему материалу.</p></div>";
+        document.getElementById('controls-area').innerHTML = `<button class="btn" onclick="renderQuestion()">Начать тест</button>`;
+    }
+
     function renderPips() {
         const container = document.getElementById('pips-container');
         container.innerHTML = '';
@@ -539,7 +602,6 @@
     function showFragment() {
         const frag = App.fragments[App.currentFragIdx];
         
-        // Сброс счетчика ошибок
         App.currentErrors = 0;
         updateErrorUI(false);
         
@@ -564,7 +626,7 @@
         const content = document.getElementById('content-area');
         content.innerHTML = frag.text;
         content.style.animation = 'none';
-        content.offsetHeight; /* trigger reflow */
+        content.offsetHeight; 
         content.style.animation = 'fadeIn 0.5s ease-out';
         
         document.getElementById('controls-area').innerHTML = `<button class="btn" onclick="startQuestions()">Готов к вопросам</button>`;
@@ -580,7 +642,7 @@
         
         document.getElementById('header-badge').innerText = "Тест";
         document.getElementById('header-badge').style.background = "#e84393";
-        updateErrorUI(true); // Показать счетчик ошибок (только для промежуточного)
+        updateErrorUI(true);
         
         renderQuestion();
     }
@@ -594,28 +656,32 @@
     }
 
     function renderQuestion() {
-        const list = (App.mode === 'quiz') ? App.fragments[App.currentFragIdx].questions : App.fragments.flatMap(f => f.questions);
-        
+        let list = [];
+        if (App.mode === 'final') {
+            list = App.fragments.flatMap(f => f.questions);
+        } else {
+            list = App.fragments[App.currentFragIdx].questions;
+        }
+
         if (App.currentQIdx >= list.length) {
-            if(App.mode === 'quiz') {
+            if(App.mode === 'final') {
+                finishTest();
+            } else {
                 if(App.currentFragIdx < App.fragments.length - 1) {
                     App.currentFragIdx++;
                     App.mode = 'reading';
                     renderPips();
                     showFragment();
                 } else {
-                    // Переход к финальному тесту
                     App.mode = 'final';
                     App.currentQIdx = 0;
                     renderPips();
                     document.getElementById('header-step').innerText = "Итог";
                     document.getElementById('header-badge').innerText = "Финал";
-                    updateErrorUI(false); // Скрыть счетчик ошибок
-                    document.getElementById('content-area').innerHTML = "<div style='text-align:center; padding:60px 20px;'><h2 style='font-size:clamp(20px, 5vw, 28px); margin-bottom:10px;'>Финальный тест</h2><p>Проверка знаний по всему материалу.</p></div>";
+                    updateErrorUI(false);
+                    document.getElementById('content-area').innerHTML = "<div style='text-align:center; padding:60px 20px;'><h2>Финальный тест</h2><p>Проверка знаний по всему материалу.</p></div>";
                     document.getElementById('controls-area').innerHTML = `<button class="btn" onclick="renderQuestion()">Начать</button>`;
                 }
-            } else {
-                finishTest();
             }
             return;
         }
@@ -634,7 +700,7 @@
         document.getElementById('content-area').innerHTML = html;
         document.getElementById('controls-area').innerHTML = `
             <div class="feedback-msg" id="fb"></div>
-            <button class="btn" onclick="submitAnswer()">Ответить</button>
+            <button class="btn" id="submit-btn" onclick="submitAnswer()">Ответить</button>
         `;
     }
 
@@ -644,12 +710,17 @@
     }
 
     function submitAnswer() {
-        const list = (App.mode === 'quiz') ? App.fragments[App.currentFragIdx].questions : App.fragments.flatMap(f => f.questions);
+        let list = [];
+        if (App.mode === 'final') {
+            list = App.fragments.flatMap(f => f.questions);
+        } else {
+            list = App.fragments[App.currentFragIdx].questions;
+        }
         const q = list[App.currentQIdx];
         let val = "", correct = false;
         const fb = document.getElementById('fb');
+        const btn = document.getElementById('submit-btn');
 
-        // Получение ответа
         if (q.type === 'choice') {
             const sel = document.querySelector('.option-item.selected');
             if(!sel) { fb.innerText = "Выберите вариант"; fb.className = "feedback-msg fb-error"; return; }
@@ -658,18 +729,29 @@
         } else {
             val = document.getElementById('ans-input').value.trim();
             if(!val) { fb.innerText = "Введите ответ"; fb.className = "feedback-msg fb-error"; return; }
-            correct = val.toLowerCase() === q.answer;
+            
+            // Использование Jaro-Winkler для текстовых ответов
+            const userValLower = val.toLowerCase();
+            const correctValLower = q.answer; // Уже в lowerCase из парсера
+            
+            // Вычисляем схожесть
+            const distance = jaroWinkler(userValLower, correctValLower);
+            correct = distance >= q.similarity;
+
+            // Для отладки можно вывести в консоль:
+            // console.log(`Match: ${distance.toFixed(2)} (Req: ${q.similarity})`);
         }
 
-        // Логика для Финального теста (Одна попытка)
+        // --- ЛОГИКА ФИНАЛЬНОГО ТЕСТА ---
         if (App.mode === 'final') {
-            // Визуальная обратная связь
+            btn.disabled = true;
+
             if (q.type === 'choice') {
                 document.querySelectorAll('.option-item').forEach(el => {
-                    el.style.pointerEvents = 'none'; // Блокируем выбор
+                    el.style.pointerEvents = 'none';
                     const isCorrectOpt = q.options.find(o => o.text === el.innerText && o.correct);
-                    if (isCorrectOpt) el.classList.add('correct'); // Подсветка правильного
-                    if (el.classList.contains('selected') && !correct) el.classList.add('wrong'); // Подсветка ошибки
+                    if (isCorrectOpt) el.classList.add('correct');
+                    if (el.classList.contains('selected') && !correct) el.classList.add('wrong');
                 });
             } else {
                 const input = document.getElementById('ans-input');
@@ -677,31 +759,27 @@
                 input.style.borderColor = correct ? 'var(--success)' : 'var(--danger)';
             }
 
-            // Сохраняем результат
             App.results.answers.push({stage: 'final', text: q.text, ans: val, correct: correct});
             
-            // Показываем сообщение и переходим дальше
             fb.innerText = correct ? "Верно!" : "Неверно";
             fb.className = correct ? "feedback-msg fb-success" : "feedback-msg fb-error";
             
             App.currentQIdx++;
-            setTimeout(renderQuestion, 1200); // Пауза чтобы увидеть результат
-
+            setTimeout(renderQuestion, 1200);
         } 
-        // Логика для Промежуточного теста (Обучение)
+        
+        // --- ЛОГИКА ПРОМЕЖУТОЧНОГО ТЕСТА ---
         else if (App.mode === 'quiz') {
             if (correct) {
                 fb.innerText = "Отлично!";
                 fb.className = "feedback-msg fb-success";
-                App.results.answers.push({stage: 'quiz', text: q.text, ans: val, correct: true});
                 
-                App.currentErrors = 0; // Сброс счетчика ошибок при успехе
+                App.currentErrors = 0;
                 updateErrorUI(true);
                 
                 App.currentQIdx++;
                 setTimeout(renderQuestion, 800);
             } else {
-                // Ошибка в обучении
                 App.currentErrors++;
                 updateErrorUI(true);
                 
@@ -716,7 +794,6 @@
                     fb.innerText = "Неверно. Попробуйте еще раз.";
                     fb.className = "feedback-msg fb-error";
                     
-                    // Визуальная подсветка и разрешение повтора
                     if(q.type === 'choice') {
                         document.querySelectorAll('.option-item').forEach(el => {
                             el.style.pointerEvents = 'auto';
@@ -745,14 +822,12 @@
         document.getElementById('screen-process').style.display = 'none';
         document.getElementById('screen-result').style.display = 'flex';
         
-        // Фильтруем только финальные ответы
         const finalAnswers = App.results.answers.filter(a => a.stage === 'final');
         const totalSec = App.results.times.reduce((s,t) => s+t.spent, 0);
         const errs = finalAnswers.filter(a => !a.correct).length;
         
         document.getElementById('final-fio').innerText = document.getElementById('input-fio').value;
         
-        // Расчет оценки (пример: 5, 4, 3, 2)
         let grade = 5;
         if(errs > 0) grade = 4;
         if(errs > 1) grade = 3;
