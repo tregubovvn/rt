@@ -521,7 +521,7 @@
                         type: q.getAttribute('type'), 
                         text: q.querySelector('text').textContent,
                         // Считываем порог схожести, по умолчанию 0.7 (70%)
-                        similarity: parseFloat(q.getAttribute('similarity')) || 0.7 
+                        similarity: parseFloat(q.getAttribute('similarity')) || 0.9
                     };
                     if (obj.type === 'choice') {
                         obj.options = [];
