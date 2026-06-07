@@ -1,5 +1,8 @@
 # RE:AD — Система Активного Чтения
 
+https://tregubovvn.github.io/rt/editor.html 
+
+
 https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/text2.xml 
 
 https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/text3.xml
