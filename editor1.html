@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Test Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0f1a;
+            --bg-elevated: #111827;
+            --bg-card: #1a2235;
+            --fg: #e8ecf4;
+            --fg-muted: #6b7a94;
+            --accent: #22d3a0;
+            --accent-dim: rgba(34, 211, 160, 0.15);
+            --border: #2a3548;
+            --error: #f87171;
+            --warning: #fbbf24;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+        }
+        
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .bg-pattern {
+            background-image: 
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 211, 160, 0.08), transparent),
+                radial-gradient(circle at 20% 80%, rgba(34, 211, 160, 0.04), transparent 40%),
+                linear-gradient(180deg, var(--bg) 0%, #0d1424 100%);
+            background-attachment: fixed;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-elevated); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+        
+        .input-base {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--fg);
+            transition: all 0.2s ease;
+        }
+        .input-base:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+        .input-base::placeholder { color: var(--fg-muted); }
+        
+        .btn {
+            padding: 0.625rem 1.25rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--fg);
+        }
+        .btn-secondary:hover { 
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+        .btn-danger {
+            background: transparent;
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+        .btn-danger:hover { background: rgba(248, 113, 113, 0.1); }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        
+        .xml-editor {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--fg);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+        .xml-editor:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .question-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .question-card:hover {
+            border-color: rgba(34, 211, 160, 0.3);
+        }
+        
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .option-item.correct {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+        
+        .radio-custom {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .radio-custom.selected {
+            border-color: var(--accent);
+            background: var(--accent);
+        }
+        .radio-custom.selected::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--bg);
+            border-radius: 50%;
+        }
+        
+        .frag-nav-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--fg-muted);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .frag-nav-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .frag-nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .frag-nav-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--bg);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .saving-indicator {
+            animation: pulse 1s ease infinite;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            padding: 0.875rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success { border-color: var(--accent); }
+        .toast.error { border-color: var(--error); }
+        
+        .resize-handle {
+            height: 6px;
+            background: var(--border);
+            cursor: ns-resize;
+            transition: background 0.2s ease;
+        }
+        .resize-handle:hover { background: var(--accent); }
+        
+        .token-input {
+            font-size: 12px;
+            letter-spacing: 0.05em;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-pattern">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="px-6 py-3 border-b border-[--border] bg-[--bg-elevated]/80 backdrop-blur-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <h1 class="text-lg font-bold">Reading Test Editor</h1>
+                        <p class="text-xs text-[--fg-muted]">XML-based test editor</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div id="gistIdDisplay" class="hidden items-center gap-2 px-3 py-1.5 bg-[--bg] rounded-lg border border-[--border]">
+                            <span class="text-xs text-[--fg-muted]">Gist:</span>
+                            <code id="currentGistId" class="mono text-sm text-[--accent]"></code>
+                            <button onclick="copyGistId()" class="text-[--fg-muted] hover:text-[--accent] transition-colors" title="Copy Gist ID">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button onclick="showLoadModal()" class="btn btn-secondary text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                            </svg>
+                            Load
+                        </button>
+                        <button onclick="saveToGist()" class="btn btn-primary text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                            </svg>
+                            Save to Gist
+                        </button>
+                    </div>
+                </div>
+                <!-- Token input -->
+                <div class="flex items-center gap-3">
+                    <label class="text-xs text-[--fg-muted] whitespace-nowrap">GitHub Token:</label>
+                    <input type="password" id="githubToken" class="input-base token-input flex-1 px-3 py-1.5 rounded-lg mono" 
+                           placeholder="github_pat_..." onchange="saveToken()">
+                    <a href="https://github.com/settings/tokens?type=beta" target="_blank" 
+                       class="text-xs text-[--accent] hover:underline whitespace-nowrap">Get token</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Fragment Editor -->
+            <div class="flex-1 overflow-auto p-6">
+                <div class="max-w-4xl mx-auto">
+                    <!-- Fragment Navigation -->
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-2">
+                            <button id="prevBtn" onclick="prevFragment()" class="frag-nav-btn" disabled>
+                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                                Prev
+                            </button>
+                            <div id="fragmentTabs" class="flex items-center gap-1">
+                            </div>
+                            <button id="nextBtn" onclick="nextFragment()" class="frag-nav-btn">
+                                Next
+                                <svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button onclick="addFragment()" class="btn btn-secondary text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Add Fragment
+                        </button>
+                    </div>
+
+                    <!-- Fragment Form -->
+                    <div id="fragmentEditor" class="card p-6 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold">Fragment <span id="fragmentNumber">1</span></h2>
+                            <button onclick="deleteCurrentFragment()" class="text-[--error] hover:bg-[--error]/10 p-2 rounded-lg transition-colors" title="Delete fragment">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Time settings -->
+                        <div class="flex gap-4 mb-4">
+                            <div class="flex-1">
+                                <label class="block text-sm text-[--fg-muted] mb-1.5">Time Excellent (sec)</label>
+                                <input type="number" id="timeExcellent" class="input-base w-full px-3 py-2 rounded-lg mono" min="1" onchange="updateFragment()">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-sm text-[--fg-muted] mb-1.5">Time Good (sec)</label>
+                                <input type="number" id="timeGood" class="input-base w-full px-3 py-2 rounded-lg mono" min="1" onchange="updateFragment()">
+                            </div>
+                        </div>
+
+                        <!-- Text -->
+                        <div class="mb-6">
+                            <label class="block text-sm text-[--fg-muted] mb-1.5">Text</label>
+                            <textarea id="fragmentText" class="input-base w-full px-4 py-3 rounded-lg min-h-[120px] resize-y" placeholder="Enter fragment text..." oninput="updateFragment()"></textarea>
+                        </div>
+
+                        <!-- Questions -->
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-semibold">Questions</h3>
+                                <div class="flex gap-2">
+                                    <button onclick="addQuestion('choice')" class="btn btn-secondary text-xs py-1.5 px-3">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                        Choice
+                                    </button>
+                                    <button onclick="addQuestion('input')" class="btn btn-secondary text-xs py-1.5 px-3">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                        Input
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="questionsContainer" class="space-y-4">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resize Handle -->
+            <div class="resize-handle" id="resizeHandle"></div>
+
+            <!-- XML Panel -->
+            <div id="xmlPanel" class="h-[300px] min-h-[150px] max-h-[500px] bg-[--bg-elevated] border-t border-[--border] flex flex-col">
+                <div class="flex items-center justify-between px-4 py-2 border-b border-[--border] bg-[--bg-card]">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold">XML Output</span>
+                        <span id="syncIndicator" class="hidden text-xs text-[--accent] saving-indicator">syncing...</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="formatXml()" class="text-xs text-[--fg-muted] hover:text-[--accent] transition-colors" title="Format XML">
+                            Format
+                        </button>
+                        <button onclick="copyXml()" class="text-xs text-[--fg-muted] hover:text-[--accent] transition-colors" title="Copy XML">
+                            Copy
+                        </button>
+                        <button onclick="applyXmlChanges()" class="btn btn-secondary text-xs py-1 px-2">Apply Changes</button>
+                    </div>
+                </div>
+                <textarea id="xmlEditor" class="xml-editor flex-1 w-full p-4 border-0 outline-none" spellcheck="false" oninput="onXmlEdit()"></textarea>
+            </div>
+        </main>
+    </div>
+
+    <!-- Load Modal -->
+    <div id="loadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="card max-w-md w-full p-6 animate-in">
+            <h3 class="text-lg font-semibold mb-4">Load from GitHub Gist</h3>
+            <div class="mb-4">
+                <label class="block text-sm text-[--fg-muted] mb-1.5">Gist ID</label>
+                <input type="text" id="loadGistId" class="input-base w-full px-3 py-2 rounded-lg mono" placeholder="Enter Gist ID...">
+            </div>
+            <p class="text-xs text-[--fg-muted] mb-4">
+                Enter the Gist ID from the URL: github.com/username/gist/<strong>ID</strong>
+            </p>
+            <div class="flex gap-3 justify-end">
+                <button onclick="hideLoadModal()" class="btn btn-secondary">Cancel</button>
+                <button onclick="loadFromGist()" class="btn btn-primary">Load</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        // State
+        let testData = {
+            fragments: []
+        };
+        let currentFragmentIndex = 0;
+        let currentGistId = null;
+        let syncTimeout = null;
+
+        // Default XML
+        const defaultXml = `<readingTest>
+<fragment timeExcellent="60" timeGood="90">
+<text>Логистические технологии при организации перевозок используются и для выбора рационального подвижного состава (ПС), который обеспечивал бы максимальную эффективность перевозок. Конструкция транспортных средств должна определяться не только приспособленностью к движению, но и соответствием своему основному назначению - перевозке грузов. Перевозки должны выполняться производительно, но при минимальных трудозатратах и себестоимости, с максимальной безопасностью, высокой сохранностью грузов в различных условиях эксплуатации.</text>
+<questions>
+<question type="choice">
+<text>Что, согласно тексту, должно определять конструкцию транспортных средств?</text>
+<options>
+<option>Только приспособленность к движению</option>
+<option correct="true">Приспособленность к движению и соответствие назначению — перевозке грузов</option>
+<option>Только минимизация стоимости производства</option>
+<option>Максимальная скорость и манёвренность</option>
+</options>
+</question>
+<question type="input">
+<text>Какие два показателя должны быть минимальными при выполнении перевозок согласно тексту?</text>
+<answer>трудозатраты и себестоимость</answer>
+</question>
+<question type="choice">
+<text>Какая цель выбора рационального подвижного состава указана в тексте?</text>
+<options>
+<option>Снижение экологической нагрузки</option>
+<option correct="true">Максимальная эффективность перевозок</option>
+<option>Увеличение парка транспортных средств</option>
+<option>Сокращение времени погрузки</option>
+</options>
+</question>
+<question type="input">
+<text>Назовите два требования к безопасности и сохранности, упомянутые в первом абзаце.</text>
+<answer>максимальная безопасность, высокая сохранность грузов</answer>
+</question>
+</questions>
+</fragment>
+
+<fragment timeExcellent="60" timeGood="90">
+    <text>На выбор типа ПС оказывают влияние свойства груза и требования, предъявляемые к его защите от воздействия внешних факторов, способ выполнения погрузо-разгрузочных работ, дорожные условия и т. п. После выбора типа ПС при наличии у перевозчика нескольких моделей автотранспортных средств (данного типа необходимо выполнить расчет затрат. Наименьшие затраты будут соответствовать лучшей модели ПС для выполнения данных перевозок. На практике, при выборе типа ПС, помимо экономических критериев приходится учитывать и значительное число различных технических требований и ограничений.</text>
+    <questions>
+        <question type="choice">
+            <text>Какой из перечисленных факторов НЕ влияет на выбор типа ПС согласно тексту?</text>
+            <options>
+                <option>Свойства груза</option>
+                <option>Дорожные условия</option>
+                <option correct="true">Предпочтения водителя</option>
+                <option>Способ погрузо-разгрузочных работ</option>
+            </options>
+        </question>
+        <question type="input">
+            <text>Что необходимо выполнить, если у перевозчика есть несколько моделей ТС выбранного типа?</text>
+            <answer>расчет затрат</answer>
+        </question>
+        <question type="choice">
+            <text>Какая модель ПС считается лучшей для выполнения данных перевозок?</text>
+            <options>
+                <option>С наибольшей грузоподъёмностью</option>
+                <option>Самая современная по году выпуска</option>
+                <option correct="true">С наименьшими затратами</option>
+                <option>С наименьшим расходом топлива</option>
+            </options>
+        </question>
+        <question type="input">
+            <text>Какие дополнительные критерии, помимо экономических, необходимо учитывать на практике при выборе ПС?</text>
+            <answer>технические требования и ограничения</answer>
+        </question>
+    </questions>
+</fragment>
+
+<fragment timeExcellent="60" timeGood="90">
+    <text>Несколько разнородных критериев можно сравнить и вывести обобщенный показатель с помощью расчета интегральной оценки. Показатели могут иметь различное влияние (вес) при формировании обобщенного критерия для выбора ПС. Учесть степень влияния различных показателей можно с помощью их ранжирования. Каждому показателю присваивается номер в общем списке с учетом его важности, а затем каждое относительное значение показателей делится на его ранг и значения складываются. Полученный результат составит величину суммарного коэффициента, которую и можно принять за интегральный показатель. Наибольшее значение суммарного показателя будет соответствовать лучшему варианту ПС.</text>
+    <questions>
+        <question type="choice">
+            <text>Какой метод позволяет сравнить разнородные критерии и получить обобщённый показатель?</text>
+            <options>
+                <option>Метод экспертных оценок</option>
+                <option correct="true">Расчёт интегральной оценки</option>
+                <option>Метод парных сравнений</option>
+                <option>Статистический анализ</option>
+            </options>
+        </question>
+        <question type="input">
+            <text>Что присваивается каждому показателю при ранжировании?</text>
+            <answer>номер (ранг) в общем списке с учётом важности</answer>
+        </question>
+        <question type="choice">
+            <text>Как рассчитывается суммарный коэффициент для интегрального показателя?</text>
+            <options>
+                <option>Перемножаются все относительные значения показателей</option>
+                <option>Берётся среднее арифметическое всех показателей</option>
+                <option correct="true">Каждое относительное значение делится на его ранг, затем значения складываются</option>
+                <option>Выбирается максимальное значение среди всех показателей</option>
+            </options>
+        </question>
+        <question type="input">
+            <text>Какое значение суммарного показателя соответствует лучшему варианту ПС?</text>
+            <answer>наибольшее значение</answer>
+        </question>
+    </questions>
+</fragment>
+
+</readingTest>`;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            parseXmlToData(defaultXml);
+            renderFragment();
+            updateXmlOutput();
+            initResizeHandle();
+            loadToken();
+        });
+
+        // Token management
+        function loadToken() {
+            const token = localStorage.getItem('github_token');
+            if (token) {
+                document.getElementById('githubToken').value = token;
+            }
+        }
+
+        function saveToken() {
+            const token = document.getElementById('githubToken').value.trim();
+            if (token) {
+                localStorage.setItem('github_token', token);
+            } else {
+                localStorage.removeItem('github_token');
+            }
+        }
+
+        function getToken() {
+            return document.getElementById('githubToken').value.trim();
+        }
+
+        // Parse XML to internal data structure
+        function parseXmlToData(xmlString) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlString, 'text/xml');
+            const errorNode = doc.querySelector('parsererror');
+            
+            if (errorNode) {
+                showToast('Invalid XML format', 'error');
+                return false;
+            }
+
+            testData.fragments = [];
+            const fragments = doc.querySelectorAll('fragment');
+            
+            fragments.forEach(fragment => {
+                const fragData = {
+                    timeExcellent: parseInt(fragment.getAttribute('timeExcellent')) || 60,
+                    timeGood: parseInt(fragment.getAttribute('timeGood')) || 90,
+                    text: '',
+                    questions: []
+                };
+
+                const textEl = fragment.querySelector('text');
+                if (textEl) fragData.text = textEl.textContent;
+
+                const questions = fragment.querySelectorAll('question');
+                questions.forEach(q => {
+                    const qData = {
+                        type: q.getAttribute('type') || 'choice',
+                        text: '',
+                        options: [],
+                        answer: ''
+                    };
+
+                    const qTextEl = q.querySelector('text');
+                    if (qTextEl) qData.text = qTextEl.textContent;
+
+                    if (qData.type === 'choice') {
+                        const options = q.querySelectorAll('option');
+                        options.forEach(opt => {
+                            qData.options.push({
+                                text: opt.textContent,
+                                correct: opt.getAttribute('correct') === 'true'
+                            });
+                        });
+                    } else {
+                        const answerEl = q.querySelector('answer');
+                        if (answerEl) qData.answer = answerEl.textContent;
+                    }
+
+                    fragData.questions.push(qData);
+                });
+
+                testData.fragments.push(fragData);
+            });
+
+            return true;
+        }
+
+        // Generate XML from data
+        function generateXml() {
+            let xml = '<readingTest>\n';
+            
+            testData.fragments.forEach(frag => {
+                xml += '<fragment timeExcellent="' + frag.timeExcellent + '" timeGood="' + frag.timeGood + '">\n';
+                xml += '<text>' + escapeXml(frag.text) + '</text>\n';
+                xml += '<questions>\n';
+                
+                frag.questions.forEach(q => {
+                    xml += '<question type="' + q.type + '">\n';
+                    xml += '<text>' + escapeXml(q.text) + '</text>\n';
+                    
+                    if (q.type === 'choice') {
+                        xml += '<options>\n';
+                        q.options.forEach(opt => {
+                            if (opt.correct) {
+                                xml += '<option correct="true">' + escapeXml(opt.text) + '</option>\n';
+                            } else {
+                                xml += '<option>' + escapeXml(opt.text) + '</option>\n';
+                            }
+                        });
+                        xml += '</options>\n';
+                    } else {
+                        xml += '<answer>' + escapeXml(q.answer) + '</answer>\n';
+                    }
+                    
+                    xml += '</question>\n';
+                });
+                
+                xml += '</questions>\n';
+                xml += '</fragment>\n';
+            });
+            
+            xml += '</readingTest>';
+            return xml;
+        }
+
+        function escapeXml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        // Update XML output with debounce
+        function updateXmlOutput() {
+            const indicator = document.getElementById('syncIndicator');
+            indicator.classList.remove('hidden');
+            
+            clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(() => {
+                document.getElementById('xmlEditor').value = generateXml();
+                indicator.classList.add('hidden');
+            }, 150);
+        }
+
+        // Render current fragment
+        function renderFragment() {
+            if (testData.fragments.length === 0) {
+                testData.fragments.push({
+                    timeExcellent: 60,
+                    timeGood: 90,
+                    text: '',
+                    questions: []
+                });
+            }
+
+            const frag = testData.fragments[currentFragmentIndex];
+            
+            document.getElementById('fragmentNumber').textContent = currentFragmentIndex + 1;
+            document.getElementById('timeExcellent').value = frag.timeExcellent;
+            document.getElementById('timeGood').value = frag.timeGood;
+            document.getElementById('fragmentText').value = frag.text;
+
+            renderQuestions();
+            updateNavigation();
+        }
+
+        // Render questions
+        function renderQuestions() {
+            const container = document.getElementById('questionsContainer');
+            const frag = testData.fragments[currentFragmentIndex];
+            
+            if (frag.questions.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-[--fg-muted]">No questions yet. Add a question above.</div>';
+                return;
+            }
+
+            container.innerHTML = frag.questions.map((q, qIndex) => {
+                if (q.type === 'choice') {
+                    return renderChoiceQuestion(q, qIndex);
+                } else {
+                    return renderInputQuestion(q, qIndex);
+                }
+            }).join('');
+        }
+
+        function renderChoiceQuestion(q, qIndex) {
+            const optionsHtml = q.options.map((opt, optIndex) => `
+                <div class="option-item ${opt.correct ? 'correct' : ''}" data-q="${qIndex}" data-opt="${optIndex}">
+                    <div class="radio-custom ${opt.correct ? 'selected' : ''}" onclick="setCorrectAnswer(${qIndex}, ${optIndex})"></div>
+                    <input type="text" class="flex-1 bg-transparent border-0 outline-none text-[--fg]" 
+                           value="${escapeHtml(opt.text)}" 
+                           onchange="updateOption(${qIndex}, ${optIndex}, this.value)">
+                    <button onclick="removeOption(${qIndex}, ${optIndex})" class="text-[--fg-muted] hover:text-[--error] transition-colors p-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+
+            return `
+                <div class="question-card p-4" data-question="${qIndex}">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-medium px-2 py-0.5 rounded bg-[--accent-dim] text-[--accent]">CHOICE</span>
+                            <span class="text-xs text-[--fg-muted]">Q${qIndex + 1}</span>
+                        </div>
+                        <button onclick="removeQuestion(${qIndex})" class="text-[--fg-muted] hover:text-[--error] transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <textarea class="input-base w-full px-3 py-2 rounded-lg text-sm mb-3 min-h-[60px]" 
+                              onchange="updateQuestionText(${qIndex}, this.value)">${escapeHtml(q.text)}</textarea>
+                    <div class="space-y-2 mb-3">
+                        ${optionsHtml}
+                    </div>
+                    <button onclick="addOption(${qIndex})" class="text-xs text-[--accent] hover:text-[--accent]/80 transition-colors">
+                        + Add option
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderInputQuestion(q, qIndex) {
+            return `
+                <div class="question-card p-4" data-question="${qIndex}">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-medium px-2 py-0.5 rounded bg-[--warning]/20 text-[--warning]">INPUT</span>
+                            <span class="text-xs text-[--fg-muted]">Q${qIndex + 1}</span>
+                        </div>
+                        <button onclick="removeQuestion(${qIndex})" class="text-[--fg-muted] hover:text-[--error] transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <textarea class="input-base w-full px-3 py-2 rounded-lg text-sm mb-3 min-h-[60px]" 
+                              onchange="updateQuestionText(${qIndex}, this.value)">${escapeHtml(q.text)}</textarea>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-[--fg-muted]">Answer:</span>
+                        <input type="text" class="input-base flex-1 px-3 py-1.5 rounded-lg text-sm" 
+                               value="${escapeHtml(q.answer)}" 
+                               onchange="updateAnswer(${qIndex}, this.value)">
+                    </div>
+                </div>
+            `;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Navigation
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            prevBtn.disabled = currentFragmentIndex === 0;
+            nextBtn.disabled = currentFragmentIndex >= testData.fragments.length - 1;
+
+            const tabsContainer = document.getElementById('fragmentTabs');
+            tabsContainer.innerHTML = testData.fragments.map((_, i) => `
+                <button onclick="goToFragment(${i})" class="frag-nav-btn ${i === currentFragmentIndex ? 'active' : ''}">
+                    ${i + 1}
+                </button>
+            `).join('');
+        }
+
+        function prevFragment() {
+            if (currentFragmentIndex > 0) {
+                currentFragmentIndex--;
+                renderFragment();
+            }
+        }
+
+        function nextFragment() {
+            if (currentFragmentIndex < testData.fragments.length - 1) {
+                currentFragmentIndex++;
+                renderFragment();
+            }
+        }
+
+        function goToFragment(index) {
+            currentFragmentIndex = index;
+            renderFragment();
+        }
+
+        // Fragment operations
+        function updateFragment() {
+            const frag = testData.fragments[currentFragmentIndex];
+            frag.timeExcellent = parseInt(document.getElementById('timeExcellent').value) || 60;
+            frag.timeGood = parseInt(document.getElementById('timeGood').value) || 90;
+            frag.text = document.getElementById('fragmentText').value;
+            updateXmlOutput();
+        }
+
+        function addFragment() {
+            testData.fragments.push({
+                timeExcellent: 60,
+                timeGood: 90,
+                text: '',
+                questions: []
+            });
+            currentFragmentIndex = testData.fragments.length - 1;
+            renderFragment();
+            updateXmlOutput();
+        }
+
+        function deleteCurrentFragment() {
+            if (testData.fragments.length <= 1) {
+                showToast('Cannot delete the last fragment', 'error');
+                return;
+            }
+            
+            testData.fragments.splice(currentFragmentIndex, 1);
+            if (currentFragmentIndex >= testData.fragments.length) {
+                currentFragmentIndex = testData.fragments.length - 1;
+            }
+            renderFragment();
+            updateXmlOutput();
+            showToast('Fragment deleted', 'success');
+        }
+
+        // Question operations
+        function addQuestion(type) {
+            const frag = testData.fragments[currentFragmentIndex];
+            const newQuestion = {
+                type: type,
+                text: '',
+                options: type === 'choice' ? [{ text: '', correct: true }, { text: '', correct: false }] : [],
+                answer: type === 'input' ? '' : undefined
+            };
+            frag.questions.push(newQuestion);
+            renderQuestions();
+            updateXmlOutput();
+        }
+
+        function removeQuestion(index) {
+            const frag = testData.fragments[currentFragmentIndex];
+            frag.questions.splice(index, 1);
+            renderQuestions();
+            updateXmlOutput();
+        }
+
+        function updateQuestionText(index, value) {
+            const frag = testData.fragments[currentFragmentIndex];
+            frag.questions[index].text = value;
+            updateXmlOutput();
+        }
+
+        function updateAnswer(index, value) {
+            const frag = testData.fragments[currentFragmentIndex];
+            frag.questions[index].answer = value;
+            updateXmlOutput();
+        }
+
+        // Option operations
+        function addOption(qIndex) {
+            const frag = testData.fragments[currentFragmentIndex];
+            frag.questions[qIndex].options.push({ text: '', correct: false });
+            renderQuestions();
+            updateXmlOutput();
+        }
+
+        function removeOption(qIndex, optIndex) {
+            const frag = testData.fragments[currentFragmentIndex];
+            const options = frag.questions[qIndex].options;
+            
+            if (options.length <= 2) {
+                showToast('Minimum 2 options required', 'error');
+                return;
+            }
+            
+            options.splice(optIndex, 1);
+            renderQuestions();
+            updateXmlOutput();
+        }
+
+        function updateOption(qIndex, optIndex, value) {
+            const frag = testData.fragments[currentFragmentIndex];
+            frag.questions[qIndex].options[optIndex].text = value;
+            updateXmlOutput();
+        }
+
+        function setCorrectAnswer(qIndex, optIndex) {
+            const frag = testData.fragments[currentFragmentIndex];
+            const options = frag.questions[qIndex].options;
+            
+            options.forEach((opt, i) => {
+                opt.correct = i === optIndex;
+            });
+            
+            renderQuestions();
+            updateXmlOutput();
+        }
+
+        // XML Editor
+        function onXmlEdit() {
+            // User edits XML manually
+        }
+
+        function applyXmlChanges() {
+            const xmlString = document.getElementById('xmlEditor').value;
+            
+            if (parseXmlToData(xmlString)) {
+                currentFragmentIndex = 0;
+                renderFragment();
+                showToast('XML applied successfully', 'success');
+            }
+        }
+
+        function formatXml() {
+            const xmlEditor = document.getElementById('xmlEditor');
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xmlEditor.value, 'text/xml');
+                const errorNode = doc.querySelector('parsererror');
+                
+                if (errorNode) {
+                    showToast('Cannot format invalid XML', 'error');
+                    return;
+                }
+                
+                const serializer = new XMLSerializer();
+                let formatted = formatXmlString(serializer.serializeToString(doc));
+                xmlEditor.value = formatted;
+            } catch (e) {
+                showToast('Error formatting XML', 'error');
+            }
+        }
+
+        function formatXmlString(xml) {
+            let formatted = '';
+            let indent = '';
+            const tab = '    ';
+            
+            xml = xml.replace(/(>)(<)(\/*)/g, '$1\n$2$3');
+            xml.split('\n').forEach(line => {
+                if (line.match(/<\/\w/)) {
+                    if (indent.length > 0) indent = indent.substring(tab.length);
+                }
+                formatted += indent + line + '\n';
+                if (line.match(/<\w[^>]*[^\/]>.*$/)) {
+                    indent += tab;
+                }
+            });
+            
+            return formatted.trim();
+        }
+
+        function copyXml() {
+            const xml = document.getElementById('xmlEditor').value;
+            navigator.clipboard.writeText(xml).then(() => {
+                showToast('XML copied to clipboard', 'success');
+            });
+        }
+
+        // GitHub Gist API
+        async function saveToGist() {
+            const token = getToken();
+            
+            if (!token) {
+                showToast('Please enter your GitHub token', 'error');
+                return;
+            }
+            
+            const xml = generateXml();
+            const isUpdate = currentGistId !== null;
+            
+            const filename = 'reading_test.xml';
+            
+            const body = {
+                description: 'Reading Test XML',
+                public: false,
+                files: {}
+            };
+            body.files[filename] = {
+                content: xml
+            };
+            
+            try {
+                showToast('Saving to Gist...', 'success');
+                
+                let url = 'https://api.github.com/gists';
+                let method = 'POST';
+                
+                if (isUpdate) {
+                    url = `https://api.github.com/gists/${currentGistId}`;
+                    method = 'PATCH';
+                }
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                currentGistId = data.id;
+                
+                document.getElementById('gistIdDisplay').classList.remove('hidden');
+                document.getElementById('gistIdDisplay').classList.add('flex');
+                document.getElementById('currentGistId').textContent = currentGistId;
+                
+                showToast(isUpdate ? 'Gist updated!' : 'Saved to Gist!', 'success');
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Failed to save: ' + error.message, 'error');
+            }
+        }
+
+        async function loadFromGist() {
+            const token = getToken();
+            const gistId = document.getElementById('loadGistId').value.trim();
+            
+            if (!token) {
+                showToast('Please enter your GitHub token', 'error');
+                return;
+            }
+            
+            if (!gistId) {
+                showToast('Please enter a Gist ID', 'error');
+                return;
+            }
+            
+            try {
+                showToast('Loading from Gist...', 'success');
+                
+                const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Find XML file in gist
+                let xmlContent = null;
+                for (const filename in data.files) {
+                    if (filename.endsWith('.xml') || data.files[filename].type === 'text/xml') {
+                        xmlContent = data.files[filename].content;
+                        break;
+                    }
+                }
+                
+                if (!xmlContent) {
+                    // Try first file
+                    const firstFile = Object.values(data.files)[0];
+                    if (firstFile) {
+                        xmlContent = firstFile.content;
+                    }
+                }
+                
+                if (!xmlContent) {
+                    throw new Error('No content found in Gist');
+                }
+                
+                if (parseXmlToData(xmlContent)) {
+                    currentFragmentIndex = 0;
+                    currentGistId = gistId;
+                    renderFragment();
+                    updateXmlOutput();
+                    
+                    document.getElementById('gistIdDisplay').classList.remove('hidden');
+                    document.getElementById('gistIdDisplay').classList.add('flex');
+                    document.getElementById('currentGistId').textContent = gistId;
+                    
+                    hideLoadModal();
+                    showToast('Loaded from Gist!', 'success');
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                showToast('Failed to load: ' + error.message, 'error');
+            }
+        }
+
+        function copyGistId() {
+            if (currentGistId) {
+                navigator.clipboard.writeText(currentGistId);
+                showToast('Gist ID copied', 'success');
+            }
+        }
+
+        // Modal
+        function showLoadModal() {
+            document.getElementById('loadModal').classList.remove('hidden');
+            document.getElementById('loadModal').classList.add('flex');
+            document.getElementById('loadGistId').focus();
+        }
+
+        function hideLoadModal() {
+            document.getElementById('loadModal').classList.add('hidden');
+            document.getElementById('loadModal').classList.remove('flex');
+        }
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastMessage.textContent = message;
+            toast.className = 'toast show ' + type;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Resize handle
+        function initResizeHandle() {
+            const handle = document.getElementById('resizeHandle');
+            const panel = document.getElementById('xmlPanel');
+            let startY, startHeight;
+            
+            handle.addEventListener('mousedown', (e) => {
+                startY = e.clientY;
+                startHeight = panel.offsetHeight;
+                document.documentElement.style.cursor = 'ns-resize';
+                document.documentElement.style.userSelect = 'none';
+                
+                function onMouseMove(e) {
+                    const newHeight = startHeight - (e.clientY - startY);
+                    const clampedHeight = Math.max(150, Math.min(500, newHeight));
+                    panel.style.height = clampedHeight + 'px';
+                }
+                
+                function onMouseUp() {
+                    document.documentElement.style.cursor = '';
+                    document.documentElement.style.userSelect = '';
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideLoadModal();
+            }
+        });
+
+        document.getElementById('loadModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('loadModal')) {
+                hideLoadModal();
+            }
+        });
+    </script>
+</body>
+</html>
