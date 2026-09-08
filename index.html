@@ -783,11 +783,11 @@
                 App.currentErrors++;
                 updateErrorUI(true);
                 
-                if (App.currentErrors >= 4) {
+                if (App.currentErrors >= 2) {
                     fb.innerText = "Слишком много ошибок.";
                     fb.className = "feedback-msg fb-error";
                     setTimeout(() => {
-                        alert("Допущено 4 ошибки. Необходимо перечитать фрагмент.");
+                        alert("Допущено 2 ошибки. Необходимо перечитать фрагмент.");
                         showFragment(); 
                     }, 1000);
                 } else {
