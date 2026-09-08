@@ -10,6 +10,45 @@ https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/
 https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/text4.xml
 
 
+Представь информацию из текста в данном в данном формате. Придумай вопросы, которые должны позволить определить, что человек понимает смысл прочитанного абзаца. Для каждого абзаца должно быть не менее 4 вопросов, не менее одного с вписыванием ответа.
+
+  <readingTest>
+    <!-- Фрагмент 1 -->
+    <fragment timeExcellent="30" timeGood="60">
+        <text>Текст первого фрагмента для чтения. Рекомендуемый объем около 100 слов.</text>
+        <questions>
+            <!-- Вопрос с выбором ответа -->
+            <question type="choice">
+                <text>Текст вопроса?</text>
+                <options>
+                    <option>Неправильный вариант</option>
+                    <option correct="true">Правильный вариант</option>
+                    <option>Еще один неправильный</option>
+                </options>
+            </question>
+            
+            <!-- Вопрос со свободным вводом -->
+            <question type="input">
+                <text>Напишите точный ответ (одно слово).</text>
+                <answer>ключевое_слово</answer>
+            </question>
+        </questions>
+    </fragment>
+
+    <!-- Фрагмент 2 -->
+    <fragment timeExcellent="45" timeGood="90">
+        <text>Текст второго фрагмента...</text>
+        <questions>
+            <!-- ... вопросы ... -->
+        </questions>
+    </fragment>
+</readingTest>
+
+
+
+
+
+
 **RE:AD** — это веб-приложение для осмысленного изучения текста, разработанное для образовательных целей. Приложение помогает студентам глубже погружаться в материал, используя методику поэтапного чтения с промежуточным и итоговым контролем знаний.
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
