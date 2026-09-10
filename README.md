@@ -12,7 +12,7 @@ https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/
 
 Представь информацию из текста в данном в приведенном ниже формате. Придумай вопросы, которые должны позволить определить, что человек понимает смысл и суть прочитанного абзаца. Для каждого абзаца должно быть не менее 4 вопросов, два из которых с вписыванием ответа (для вписывания лучше использовать конкретные термины, связанные с темой фрагмента). 
 
-
+'''xml
 <readingTest>
     <!-- Фрагмент 1 -->
     <fragment timeExcellent="30" timeGood="60">
@@ -44,7 +44,7 @@ https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/
         </questions>
     </fragment>
 </readingTest>
-
+'''
 
 
 
