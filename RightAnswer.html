@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Извлечение вопросов из XML-теста</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f5f7; margin: 0; padding: 20px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 20px; }
+  .toolbar { margin-bottom: 10px; }
+  button {
+    padding: 8px 18px; font-size: 14px; cursor: pointer;
+    border: 1px solid #b9bcc4; border-radius: 6px; background: #fff;
+  }
+  button:hover { background: #eef1f6; }
+  #status { margin-left: 10px; font-size: 13px; }
+  #status.ok { color: #1a7f37; }
+  #status.err { color: #c62828; }
+  textarea {
+    width: 100%; height: 65vh; box-sizing: border-box;
+    font-family: Consolas, 'Courier New', monospace; font-size: 14px; line-height: 1.45;
+    padding: 10px; border: 1px solid #b9bcc4; border-radius: 6px; resize: vertical;
+  }
+  .hint { font-size: 12px; color: #666; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Извлечение вопросов из XML-теста</h1>
+  <div class="toolbar">
+    <button id="pasteBtn">Вставить</button>
+    <button id="copyBtn">Копировать</button>
+    <span id="status"></span>
+  </div>
+  <textarea id="editor" spellcheck="false" placeholder="Вставьте сюда XML с вопросами..."></textarea>
+  <div class="hint">Вставьте XML (кнопка или Ctrl+V) — вопросы извлекутся автоматически. «Копировать» копирует результат в буфер обмена.</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var editor = document.getElementById('editor');
+  var statusEl = document.getElementById('status');
+  var statusTimer = null;
+
+  function showStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.className = isError ? 'err' : 'ok';
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(function () { statusEl.textContent = ''; }, 4000);
+  }
+
+  // Разбор XML и формирование результата
+  function extractQuestions(xmlText) {
+    var doc;
+    try {
+      doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    } catch (e) { return null; }
+    if (doc.getElementsByTagName('parsererror').length) return null;
+
+    var out = [];
+    var topic = doc.getElementsByTagName('topicName')[0];
+    if (topic && topic.textContent.trim()) {
+      out.push('ТЕМА: ' + topic.textContent.trim());
+      out.push('');
+    }
+
+    var fragments = doc.getElementsByTagName('fragment');
+    var counter = 0;
+    for (var f = 0; f < fragments.length; f++) {
+      var questions = fragments[f].getElementsByTagName('question');
+      out.push('=== ФРАГМЕНТ ' + (f + 1) + ' ===');
+      for (var i = 0; i < questions.length; i++) {
+        counter++;
+        var q = questions[i];
+        var qText = (q.getElementsByTagName('text')[0] || { textContent: '' }).textContent.trim();
+        var type = (q.getAttribute('type') || '').toLowerCase();
+        var answer = '';
+
+        if (type === 'choice') {
+          var options = q.getElementsByTagName('option');
+          var corrects = [];
+          for (var o = 0; o < options.length; o++) {
+            var v = (options[o].getAttribute('correct') || '').toLowerCase();
+            if (v === 'true' || v === '1' || v === 'yes' || v === 'да') {
+              corrects.push(options[o].textContent.trim());
+            }
+          }
+          answer = corrects.join(' / ');
+        } else if (type === 'input') {
+          var a = q.getElementsByTagName('answer')[0];
+          if (a) answer = a.textContent.trim();
+        }
+
+        if (!answer) answer = 'ответ не найден';
+        out.push(counter + '. ' + qText + ' (' + answer + ')');
+      }
+      out.push('');
+    }
+
+    if (counter === 0) return null;
+    return { text: out.join('\n').trim(), count: counter };
+  }
+
+  // Пытаемся обработать текст, только если он похож на нужный XML
+  function processIfXml(text) {
+    if (!text || text.indexOf('<') === -1) return null;
+    if (text.indexOf('<readingTest') === -1 &&
+        text.indexOf('<fragment') === -1 &&
+        text.indexOf('<question') === -1) return null;
+    return extractQuestions(text);
+  }
+
+  function applyPasted(text) {
+    var res = processIfXml(text);
+    if (res) {
+      editor.value = res.text;
+      showStatus('Готово: найдено вопросов — ' + res.count);
+    } else {
+      editor.value = text;
+      showStatus('Вставлено как текст: XML с вопросами не распознан', true);
+    }
+  }
+
+  // Кнопка «Вставить»
+  document.getElementById('pasteBtn').addEventListener('click', function () {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(applyPasted).catch(function () {
+        editor.focus();
+        showStatus('Браузер запретил чтение буфера — нажмите Ctrl+V в поле', true);
+      });
+    } else {
+      editor.focus();
+      showStatus('Чтение буфера не поддерживается — нажмите Ctrl+V', true);
+    }
+  });
+
+  // Автообработка при вставке через Ctrl+V
+  editor.addEventListener('paste', function (e) {
+    var text = (e.clipboardData || window.clipboardData).getData('text');
+    var res = processIfXml(text);
+    if (res) {
+      e.preventDefault();
+      editor.value = res.text;
+      showStatus('Готово: найдено вопросов — ' + res.count);
+    }
+  });
+
+  function fallbackCopy() {
+    editor.focus();
+    editor.select();
+    try {
+      document.execCommand('copy');
+      showStatus('Скопировано в буфер обмена');
+    } catch (e) {
+      showStatus('Не удалось скопировать — выделите текст и нажмите Ctrl+C', true);
+    }
+  }
+
+  // Кнопка «Копировать»
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    var value = editor.value;
+    if (!value) { showStatus('Поле пусто — копировать нечего', true); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value).then(function () {
+        showStatus('Скопировано в буфер обмена');
+      }).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  });
+})();
+</script>
+</body>
+</html>
