@@ -829,9 +829,9 @@
         document.getElementById('final-fio').innerText = document.getElementById('input-fio').value;
         
         let grade = 5;
-        if(errs > 0) grade = 4;
-        if(errs > 1) grade = 3;
-        if(errs > 3) grade = 2;
+        if(errs > 3) grade = 4;
+        if(errs > 5) grade = 3;
+        if(errs > 9) grade = 2;
         
         document.getElementById('final-grade-val').innerText = grade;
         document.getElementById('stat-time').innerText = Math.floor(totalSec/60) + "м " + (totalSec%60) + "с";
