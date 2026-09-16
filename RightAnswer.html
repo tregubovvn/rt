@@ -13,6 +13,7 @@
     border: 1px solid #b9bcc4; border-radius: 6px; background: #fff;
   }
   button:hover { background: #eef1f6; }
+  button.active { background: #dbe7ff; border-color: #7d9fd3; font-weight: bold; }
   #status { margin-left: 10px; font-size: 13px; }
   #status.ok { color: #1a7f37; }
   #status.err { color: #c62828; }
@@ -22,6 +23,10 @@
     padding: 10px; border: 1px solid #b9bcc4; border-radius: 6px; resize: vertical;
   }
   .hint { font-size: 12px; color: #666; margin-top: 6px; }
+  .denied {
+    max-width: 400px; margin: 100px auto; text-align: center;
+    font-size: 18px; color: #c62828; font-weight: bold;
+  }
 </style>
 </head>
 <body>
@@ -30,50 +35,82 @@
   <div class="toolbar">
     <button id="pasteBtn">Вставить</button>
     <button id="copyBtn">Копировать</button>
+    <button id="modeBtn">Показать текст фрагментов</button>
     <span id="status"></span>
   </div>
   <textarea id="editor" spellcheck="false" placeholder="Вставьте сюда XML с вопросами..."></textarea>
-  <div class="hint">Вставьте XML (кнопка или Ctrl+V) — вопросы извлекутся автоматически. «Копировать» копирует результат в буфер обмена.</div>
+  <div class="hint">Вставьте XML (кнопка или Ctrl+V) — вопросы извлекутся автоматически. Кнопка «Показать/Скрыть текст фрагментов» переключает режим вывода (с текстом перед вопросами или только вопросы). Также можно открыть ссылку вида index.html?pwd=ПАРОЛЬ&amp;xml=ССЫЛКА_НА_XML_ФАЙЛ</div>
 </div>
 
 <script>
 (function () {
   'use strict';
+
+  // ======== ЖЁСТКО ВШИТЫЙ ПАРОЛЬ (нужен ТОЛЬКО для загрузки XML по ссылке) ========
+  var PASSWORD = '1234';
+  var MAX_ATTEMPTS = 3;
+  // ================================================================================
+
   var editor = document.getElementById('editor');
   var statusEl = document.getElementById('status');
+  var modeBtn = document.getElementById('modeBtn');
   var statusTimer = null;
+
+  var currentMode = 'answersOnly'; // 'answersOnly' — только вопросы, 'withText' — с текстом фрагментов
+  var lastData = null;             // распарсенные данные последнего XML
+  var userEdited = false;          // пользователь правил поле вручную
 
   function showStatus(msg, isError) {
     statusEl.textContent = msg;
     statusEl.className = isError ? 'err' : 'ok';
     clearTimeout(statusTimer);
-    statusTimer = setTimeout(function () { statusEl.textContent = ''; }, 4000);
+    statusTimer = setTimeout(function () { statusEl.textContent = ''; }, 6000);
   }
 
-  // Разбор XML и формирование результата
-  function extractQuestions(xmlText) {
+  function getQueryParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
+  }
+
+  // ---------- Авторизация (только для режима загрузки файла по ссылке) ----------
+  function authorize(wrongFromUrl) {
+    var msg = wrongFromUrl
+      ? 'Пароль из ссылки неверный. Введите пароль:'
+      : 'Для загрузки XML-файла введите пароль:';
+
+    for (var i = 0; i < MAX_ATTEMPTS; i++) {
+      var extra = i > 0 ? ' (осталось попыток: ' + (MAX_ATTEMPTS - i) + ')' : '';
+      var p = prompt(msg + extra);
+      if (p === null) return false; // пользователь отменил
+      if (p === PASSWORD) return true;
+    }
+    return false;
+  }
+
+  // ---------- Разбор XML в структуру данных ----------
+  function parseTest(xmlText) {
     var doc;
     try {
       doc = new DOMParser().parseFromString(xmlText, 'application/xml');
     } catch (e) { return null; }
     if (doc.getElementsByTagName('parsererror').length) return null;
 
-    var out = [];
-    var topic = doc.getElementsByTagName('topicName')[0];
-    if (topic && topic.textContent.trim()) {
-      out.push('ТЕМА: ' + topic.textContent.trim());
-      out.push('');
-    }
+    var topicEl = doc.getElementsByTagName('topicName')[0];
+    var topic = topicEl ? topicEl.textContent.trim() : '';
 
-    var fragments = doc.getElementsByTagName('fragment');
-    var counter = 0;
-    for (var f = 0; f < fragments.length; f++) {
-      var questions = fragments[f].getElementsByTagName('question');
-      out.push('=== ФРАГМЕНТ ' + (f + 1) + ' ===');
-      for (var i = 0; i < questions.length; i++) {
-        counter++;
-        var q = questions[i];
-        var qText = (q.getElementsByTagName('text')[0] || { textContent: '' }).textContent.trim();
+    var fragments = [];
+    var fragEls = doc.getElementsByTagName('fragment');
+    var count = 0;
+
+    for (var f = 0; f < fragEls.length; f++) {
+      var frag = { text: '', questions: [] };
+      var tEl = fragEls[f].getElementsByTagName('text')[0]; // первый <text> — текст фрагмента
+      if (tEl) frag.text = tEl.textContent.trim();
+
+      var qs = fragEls[f].getElementsByTagName('question');
+      for (var i = 0; i < qs.length; i++) {
+        count++;
+        var q = qs[i];
+        var qTextEl = q.getElementsByTagName('text')[0];
         var type = (q.getAttribute('type') || '').toLowerCase();
         var answer = '';
 
@@ -88,36 +125,147 @@
           }
           answer = corrects.join(' / ');
         } else if (type === 'input') {
-          var a = q.getElementsByTagName('answer')[0];
-          if (a) answer = a.textContent.trim();
+          var aEl = q.getElementsByTagName('answer')[0];
+          if (aEl) answer = aEl.textContent.trim();
         }
 
         if (!answer) answer = 'ответ не найден';
-        out.push(counter + '. ' + qText + ' (' + answer + ')');
+        frag.questions.push({ text: qTextEl ? qTextEl.textContent.trim() : '', answer: answer });
+      }
+      fragments.push(frag);
+    }
+
+    if (count === 0) return null;
+    return { topic: topic, fragments: fragments, count: count };
+  }
+
+  // ---------- Форматирование результата в зависимости от режима ----------
+  function formatTest(data, withText) {
+    var out = [];
+    if (data.topic) {
+      out.push('ТЕМА: ' + data.topic);
+      out.push('');
+    }
+    var counter = 0;
+    for (var f = 0; f < data.fragments.length; f++) {
+      out.push('=== ФРАГМЕНТ ' + (f + 1) + ' ===');
+      if (withText && data.fragments[f].text) {
+        out.push(data.fragments[f].text);
+        out.push('');
+      }
+      for (var i = 0; i < data.fragments[f].questions.length; i++) {
+        counter++;
+        var q = data.fragments[f].questions[i];
+        out.push(counter + '. ' + q.text + ' (' + q.answer + ')');
       }
       out.push('');
     }
-
-    if (counter === 0) return null;
-    return { text: out.join('\n').trim(), count: counter };
+    return out.join('\n').trim();
   }
 
-  // Пытаемся обработать текст, только если он похож на нужный XML
-  function processIfXml(text) {
-    if (!text || text.indexOf('<') === -1) return null;
-    if (text.indexOf('<readingTest') === -1 &&
-        text.indexOf('<fragment') === -1 &&
-        text.indexOf('<question') === -1) return null;
-    return extractQuestions(text);
+  function looksLikeTestXml(text) {
+    return text && text.indexOf('<') !== -1 &&
+      (text.indexOf('<readingTest') !== -1 ||
+       text.indexOf('<fragment') !== -1 ||
+       text.indexOf('<question') !== -1);
   }
 
+  // Обработать успешный разбор: сохранить данные и вывести в текущем режиме
+  function handleParsed(data, sourceMsg) {
+    lastData = data;
+    editor.value = formatTest(data, currentMode === 'withText');
+    userEdited = false;
+    showStatus('Готово: найдено вопросов — ' + data.count + (sourceMsg ? ' (' + sourceMsg + ')' : ''));
+  }
+
+  // ---------- Загрузка XML-файла по ссылке ----------
+  function loadXmlFile(url) {
+    editor.value = '';
+    showStatus('Загрузка файла...');
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onload = function () {
+      if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) {
+        var data = parseTest(xhr.responseText);
+        if (data) {
+          handleParsed(data, 'файл загружен по ссылке');
+        } else {
+          editor.value = xhr.responseText;
+          userEdited = false;
+          showStatus('Файл загружен, но вопросы не распознаны — показан исходный текст', true);
+        }
+      } else {
+        showStatus('Ошибка загрузки: HTTP ' + xhr.status, true);
+      }
+    };
+    xhr.onerror = function () {
+      showStatus('Не удалось загрузить файл. Проверьте ссылку и доступность файла (CORS/https).', true);
+    };
+    xhr.send();
+  }
+
+  // ---------- Обработка параметров URL ----------
+  var xmlParam = getQueryParam('xml');
+
+  if (xmlParam && /^https?:\/\//i.test(xmlParam)) {
+    // ССЫЛКА на XML-файл — требуется пароль
+    var urlPwd = getQueryParam('pwd');
+    if (urlPwd !== PASSWORD) {
+      var wrong = (urlPwd !== null && urlPwd !== '');
+      if (!authorize(wrong)) {
+        document.body.innerHTML = '<div class="denied">Доступ запрещён.<br>Обновите страницу и введите правильный пароль.</div>';
+        return;
+      }
+    }
+    loadXmlFile(xmlParam);
+  } else if (xmlParam) {
+    // XML прямо в URL (закодированный) — без пароля
+    var data = parseTest(xmlParam);
+    if (data) {
+      handleParsed(data, 'XML получен из URL');
+    } else {
+      editor.value = xmlParam;
+      userEdited = false;
+      showStatus('XML из URL не распознан — показан как текст', true);
+    }
+  }
+
+  // ---------- Кнопка переключения режима ----------
+  function updateModeBtn() {
+    var withText = (currentMode === 'withText');
+    modeBtn.textContent = withText ? 'Скрыть текст фрагментов' : 'Показать текст фрагментов';
+    modeBtn.classList.toggle('active', withText);
+  }
+
+  modeBtn.addEventListener('click', function () {
+    if (!lastData) {
+      showStatus('Нет обработанного XML — сначала вставьте XML в поле или откройте ссылку с ?xml=...', true);
+      return;
+    }
+    if (userEdited && !confirm('Поле было отредактировано вручную.\nПерегенерировать результат из последнего XML?')) {
+      return;
+    }
+    currentMode = (currentMode === 'withText') ? 'answersOnly' : 'withText';
+    updateModeBtn();
+    editor.value = formatTest(lastData, currentMode === 'withText');
+    userEdited = false;
+    showStatus(currentMode === 'withText'
+      ? 'Режим: вопросы + текст фрагментов'
+      : 'Режим: только вопросы и ответы');
+  });
+
+  // Отслеживаем ручные правки
+  editor.addEventListener('input', function () { userEdited = true; });
+
+  // ---------- Вставка ----------
   function applyPasted(text) {
-    var res = processIfXml(text);
-    if (res) {
-      editor.value = res.text;
-      showStatus('Готово: найдено вопросов — ' + res.count);
+    var data = looksLikeTestXml(text) ? parseTest(text) : null;
+    if (data) {
+      handleParsed(data, null);
     } else {
       editor.value = text;
+      userEdited = false;
       showStatus('Вставлено как текст: XML с вопросами не распознан', true);
     }
   }
@@ -138,11 +286,10 @@
   // Автообработка при вставке через Ctrl+V
   editor.addEventListener('paste', function (e) {
     var text = (e.clipboardData || window.clipboardData).getData('text');
-    var res = processIfXml(text);
-    if (res) {
+    var data = looksLikeTestXml(text) ? parseTest(text) : null;
+    if (data) {
       e.preventDefault();
-      editor.value = res.text;
-      showStatus('Готово: найдено вопросов — ' + res.count);
+      handleParsed(data, null);
     }
   });
 
@@ -169,6 +316,8 @@
       fallbackCopy();
     }
   });
+
+  updateModeBtn();
 })();
 </script>
 </body>
