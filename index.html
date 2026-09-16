@@ -360,6 +360,8 @@
         <button class="btn" id="btn-start" disabled onclick="startTest()">Начать чтение</button>
         <!-- Новая кнопка для пропуска чтения -->
         <button class="btn btn-secondary" id="btn-skip" disabled onclick="startFinalTestDirectly()">Финальный тест (пропустить чтение)</button>
+        <button class="btn btn-teacher" id="btn-teacher" disabled onclick="redirectWithFileParam()">Для преподавателя</button>
+        
     </div>
 
     <!-- Screen 2: Process -->
@@ -561,6 +563,30 @@
         showFragment();
     }
 
+
+  function redirectWithFileParam() {
+  // Получаем параметры из текущего URL
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Извлекаем параметр 'file'
+  const fileParam = urlParams.get('file');
+  
+  // Если параметр есть, формируем новый URL и переходим
+  if (fileParam) {
+    // Кодируем значение, чтобы корректно передать его как часть URL
+    const encodedFile = encodeURIComponent(fileParam);
+    
+    // Формируем целевой адрес с параметром xml
+    const targetUrl = `https://tregubovvn.github.io/rt/RightAnswer.html?xml=${encodedFile}`;
+    
+    // Переходим по адресу
+    window.location.href = targetUrl;
+  } else {
+    console.warn('Параметр "file" не найден в URL');
+  }
+}
+
+    
     function startFinalTestDirectly() {
         if (!document.getElementById('input-fio').value.trim()) return alert("Введите ФИО");
         if (App.fragments.length === 0) return alert("Нет данных");
