@@ -389,8 +389,8 @@
                 <h1 style="font-size: 1.25rem; font-weight: 700; letter-spacing: -0.5px;">Reading Test Editor</h1>
             </div>
             <div class="flex-gap">
-                <button class="btn" onclick="showLoadModal()">Load Gist</button>
-                <button class="btn btn-primary" onclick="saveToGist()">Save Gist</button>
+                <button class="btn" onclick="showLoadModal()">Load GIST</button>
+                <button class="btn btn-primary" onclick="createNewGist()">New GIST</button>
             </div>
         </div>
         
@@ -404,6 +404,23 @@
                 <label class="label" style="white-space: nowrap;">DeepSeek Token:</label>
                 <input type="password" id="deepseekToken" class="input-base" style="font-family: monospace; font-size: 0.8rem;" placeholder="sk-..." onchange="saveTokens()">
                 <a href="https://platform.deepseek.com/api_keys" target="_blank" style="font-size: 0.7rem; color: var(--accent); white-space: nowrap;">Get</a>
+            </div>
+        </div>
+
+        <div class="header-tokens">
+            <div class="token-group">
+                <label class="label" style="white-space: nowrap;">Topic Name:</label>
+                <input type="text" id="topicName" class="input-base" placeholder="Enter topic name..." oninput="updateTopicName()">
+            </div>
+            <div class="token-group">
+                <label class="label" style="white-space: nowrap;">GIST:</label>
+                <div id="gistLinkContainer" class="raw-url-display hidden" style="flex: 1; max-width: none;">
+                    <a id="gistLinkText" class="url-text" style="flex: 1; min-width: 0;" href="#" target="_blank" title="Open GIST in a new tab"></a>
+                    <button class="btn-icon" onclick="copyGistUrl()" title="Copy GIST link">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </button>
+                    <button class="btn btn-sm" onclick="openTask()" title="Open task and copy its link">Open Task</button>
+                </div>
             </div>
         </div>
     </header>
@@ -465,27 +482,20 @@
             <div class="xml-header">
                 <span>XML Output</span>
                 <div class="flex-gap">
+                    <button class="btn btn-sm" onclick="document.getElementById('xmlFileInput').click()">Load File</button>
+                    <input type="file" id="xmlFileInput" accept=".xml,text/xml,application/xml" style="display: none;" onchange="loadXmlFromFile(this)">
                     <button class="btn btn-sm btn-ai" onclick="askDeepSeek()">Ask DeepSeek</button>
                     <button class="btn btn-sm" onclick="copyXml()">Copy</button>
                     <button class="btn btn-sm" onclick="applyXmlChanges()">Apply Changes</button>
                 </div>
             </div>
-            <textarea id="xmlEditor" class="xml-textarea" spellcheck="false"></textarea>
+            <textarea id="xmlEditor" class="xml-textarea" spellcheck="false" oninput="onXmlManualEdit()"></textarea>
         </div>
         
         <!-- Status Bar -->
         <div class="status-bar">
-            <div class="status-item">
+            <div class="status-item" id="statusText">
                 Ready
-            </div>
-            <div id="rawUrlContainer" class="status-item hidden">
-                <span>Raw URL:</span>
-                <div class="raw-url-display">
-                    <span id="rawUrlText" class="url-text"></span>
-                    <button class="btn-icon" onclick="copyRawUrl()" title="Copy Raw URL">
-                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    </button>
-                </div>
             </div>
         </div>
     </main>
@@ -494,9 +504,9 @@
     <div class="modal-overlay" id="loadModal">
         <div class="modal">
             <h3 style="margin-bottom: 1rem; font-weight: 600;">Load from GitHub Gist</h3>
-            <label class="label">Gist ID</label>
-            <input type="text" id="loadGistId" class="input-base" placeholder="abc123..." style="margin-bottom: 0.5rem;">
-            <p style="font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 1rem;">Enter the ID from the Gist URL.</p>
+            <label class="label">GIST Link</label>
+            <input type="text" id="loadGistId" class="input-base" placeholder="https://gist.github.com/user/abc123..." style="margin-bottom: 0.5rem;">
+            <p style="font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 1rem;">Insert a full GIST link (or raw link, or just the Gist ID).</p>
             <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                 <button class="btn" onclick="hideLoadModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="loadFromGist()">Load</button>
@@ -509,14 +519,21 @@
 
     <script>
         // --- DATA & STATE ---
-        let testData = { fragments: [] };
+        let testData = { topicName: '', fragments: [] };
         let currentFragmentIndex = 0;
         let currentGistId = null;
-        let currentRawUrl = null;
+        let currentGistUrl = null;      // https://gist.github.com/user/id
+        let currentRawUrl = null;       // raw file url (updated after each save)
+        let currentGistFilename = 'reading_test.xml';
         let syncTimeout = null;
+        let autoSaveTimeout = null;
+        let isSaving = false;
+        let needsAnotherSave = false;
+        let skipNextAutoSave = false;
 
         // Default XML Template
         const defaultXml = `<readingTest>
+<topicName></topicName>
 <fragment timeExcellent="60" timeGood="90">
 <text>Логистические технологии при организации перевозок используются и для выбора рационального подвижного состава (ПС), который обеспечивал бы максимальную эффективность перевозок. Конструкция транспортных средств должна определяться не только приспособленностью к движению, но и соответствием своему основному назначению - перевозке грузов.</text>
 <questions>
@@ -560,6 +577,9 @@
                 const doc = parser.parseFromString(xmlString, 'text/xml');
                 if (doc.querySelector('parsererror')) throw new Error('Invalid XML');
 
+                testData.topicName = doc.querySelector('topicName')?.textContent || '';
+                document.getElementById('topicName').value = testData.topicName;
+
                 testData.fragments = [];
                 doc.querySelectorAll('fragment').forEach(frag => {
                     const f = {
@@ -598,6 +618,7 @@
 
         function generateXml() {
             let xml = '<readingTest>\n';
+            xml += `<topicName>${escapeXml(testData.topicName || '')}</topicName>\n`;
             testData.fragments.forEach(frag => {
                 xml += `<fragment timeExcellent="${frag.timeExcellent}" timeGood="${frag.timeGood}">\n`;
                 xml += `<text>${escapeXml(frag.text)}</text>\n`;
@@ -718,6 +739,7 @@
             syncTimeout = setTimeout(() => {
                 document.getElementById('xmlEditor').value = generateXml();
             }, 100);
+            scheduleAutoSave();
         };
 
         const updateFragment = () => {
@@ -725,6 +747,11 @@
             frag.timeExcellent = parseInt(document.getElementById('timeExcellent').value) || 60;
             frag.timeGood = parseInt(document.getElementById('timeGood').value) || 90;
             frag.text = document.getElementById('fragmentText').value;
+            updateXmlOutput();
+        };
+
+        const updateTopicName = () => {
+            testData.topicName = document.getElementById('topicName').value;
             updateXmlOutput();
         };
 
@@ -801,85 +828,225 @@
             navigator.clipboard.writeText(document.getElementById('xmlEditor').value);
             showToast('Copied to clipboard');
         };
-        
-        const copyRawUrl = () => {
-            if(currentRawUrl) {
-                navigator.clipboard.writeText(currentRawUrl);
-                showToast('Raw URL copied');
-            }
+
+        // Manual edits in the XML Output textarea -> auto-save too
+        const onXmlManualEdit = () => {
+            scheduleAutoSave();
         };
 
-        const onXmlEdit = () => {}; 
+        // --- LOAD XML FROM LOCAL FILE ---
+        async function loadXmlFromFile(input) {
+            const file = input.files && input.files[0];
+            input.value = ''; // allow re-selecting the same file later
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const xml = e.target.result;
+
+                // Put file content into the XML Output editor
+                document.getElementById('xmlEditor').value = xml;
+
+                // Immediately apply changes (parse into editor data)
+                if (!parseXmlToData(xml)) return; // invalid XML -> parse shows error toast
+                currentFragmentIndex = 0;
+                renderFragment();
+                showToast('XML loaded from file');
+
+                // If GitHub Token is set -> create a new GIST with this content
+                if (getGithubToken()) {
+                    await createNewGist();
+                }
+            };
+            reader.onerror = () => showToast('Failed to read file', true);
+            reader.readAsText(file);
+        }
 
         // --- GIST API ---
-        async function saveToGist() {
+        function updateGistLinkDisplay() {
+            const container = document.getElementById('gistLinkContainer');
+            const link = document.getElementById('gistLinkText');
+            if (!currentGistUrl) {
+                container.classList.add('hidden');
+                return;
+            }
+            link.href = currentGistUrl;
+            link.textContent = currentGistUrl;
+            container.classList.remove('hidden');
+        }
+
+        async function createNewGist() {
             const token = getGithubToken();
             if (!token) return showToast('GitHub Token required', true);
 
-            const xml = generateXml();
-            const body = {
-                description: 'Reading Test',
-                public: false,
-                files: { 'reading_test.xml': { content: xml } }
-            };
-
             try {
-                const url = currentGistId ? `https://api.github.com/gists/${currentGistId}` : 'https://api.github.com/gists';
-                const method = currentGistId ? 'PATCH' : 'POST';
-
-                const res = await fetch(url, {
-                    method,
+                setStatus('Creating new GIST...');
+                const res = await fetch('https://api.github.com/gists', {
+                    method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({
+                        description: testData.topicName || 'Reading Test',
+                        public: false,
+                        files: { 'reading_test.xml': { content: document.getElementById('xmlEditor').value || generateXml() } }
+                    })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message);
 
                 currentGistId = data.id;
-                
-                // Get Raw URL
-                const fileData = data.files['reading_test.xml'];
-                if(fileData && fileData.raw_url) {
-                    currentRawUrl = fileData.raw_url;
-                    document.getElementById('rawUrlText').textContent = currentRawUrl;
-                    document.getElementById('rawUrlContainer').classList.remove('hidden');
-                }
+                currentGistUrl = data.html_url;
+                currentGistFilename = 'reading_test.xml';
+                currentRawUrl = data.files['reading_test.xml']?.raw_url || null;
 
-                showToast('Saved to Gist');
+                updateGistLinkDisplay();
+                setStatus('New GIST created');
+                showToast('New GIST created');
             } catch (e) {
-                showToast('Save failed: ' + e.message, true);
+                setStatus('Ready');
+                showToast('Create failed: ' + e.message, true);
             }
+        }
+
+        function scheduleAutoSave() {
+            if (!currentGistId) return;               // auto-save only works with an existing GIST
+            if (skipNextAutoSave) { skipNextAutoSave = false; return; }
+            setStatus('Unsaved changes...');
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(autoSaveToGist, 1500);
+        }
+
+        async function autoSaveToGist() {
+            const token = getGithubToken();
+            if (!currentGistId || !token) return;
+            if (isSaving) { needsAnotherSave = true; return; }
+            isSaving = true;
+            autoSaveTimeout = null;
+
+            setStatus('Saving to GIST...');
+            try {
+                const res = await fetch(`https://api.github.com/gists/${currentGistId}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        description: testData.topicName || 'Reading Test',
+                        files: { [currentGistFilename]: { content: document.getElementById('xmlEditor').value } }
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+
+                const fd = data.files[currentGistFilename];
+                if (fd && fd.raw_url) currentRawUrl = fd.raw_url;
+                setStatus('Saved to GIST at ' + new Date().toLocaleTimeString());
+            } catch (e) {
+                if (String(e.message).toLowerCase().includes('blocked')) {
+                    setStatus('GIST is busy, retrying...');
+                    scheduleAutoSave();
+                } else {
+                    setStatus('Save failed: ' + e.message);
+                    showToast('Auto-save failed: ' + e.message, true);
+                }
+            } finally {
+                isSaving = false;
+                if (needsAnotherSave) {
+                    needsAnotherSave = false;
+                    scheduleAutoSave();
+                }
+            }
+        }
+
+        function copyGistUrl() {
+            if (!currentGistUrl) return showToast('No GIST yet', true);
+            navigator.clipboard.writeText(currentGistUrl);
+            showToast('GIST link copied');
+        }
+
+        async function openTask() {
+            if (!currentGistId) return showToast('Create or load a GIST first', true);
+
+            // Open the window synchronously (to avoid popup blocking), then flush pending changes
+            const win = window.open('about:blank', '_blank');
+            try {
+                if (autoSaveTimeout) {
+                    clearTimeout(autoSaveTimeout);
+                    autoSaveTimeout = null;
+                    await autoSaveToGist();
+                }
+            } catch (e) {}
+
+            if (!currentRawUrl) {
+                if (win) win.close();
+                return showToast('Raw URL not available', true);
+            }
+
+            const taskUrl = 'https://tregubovvn.github.io/rt/index.html?file=' + encodeURIComponent(currentRawUrl);
+            try { navigator.clipboard.writeText(taskUrl); } catch (e) {}
+            if (win) { win.opener = null; win.location.href = taskUrl; }
+            else { window.open(taskUrl, '_blank'); }
+            showToast('Task link copied to clipboard');
+        }
+
+        function extractGistId(input) {
+            input = (input || '').trim();
+            if (!input) return null;
+            // If a task link was pasted, take the file parameter from it
+            try {
+                const u = new URL(input);
+                const f = u.searchParams.get('file');
+                if (f) input = f;
+            } catch (e) { /* not a URL */ }
+            const m = input.match(/(?:gist\.github\.com|gist\.githubusercontent\.com)\/(?:[^\/\s]+\/)?([0-9a-f]{7,})/i);
+            if (m) return m[1];
+            if (/^[0-9a-f]{7,}$/i.test(input)) return input;
+            return null;
         }
 
         async function loadFromGist() {
             const token = getGithubToken();
-            const id = document.getElementById('loadGistId').value.trim();
-            if (!token || !id) return showToast('Token and ID required', true);
+            const input = document.getElementById('loadGistId').value.trim();
+            if (!token || !input) return showToast('GitHub Token and GIST link required', true);
+
+            const id = extractGistId(input);
+            if (!id) return showToast('Could not extract GIST ID', true);
 
             try {
+                setStatus('Loading GIST...');
                 const res = await fetch(`https://api.github.com/gists/${id}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message);
 
-                const file = data.files[Object.keys(data.files)[0]];
+                // Pick the XML file (or the first available file)
+                let fileName = null;
+                if (data.files['reading_test.xml']) {
+                    fileName = 'reading_test.xml';
+                } else {
+                    const names = Object.keys(data.files);
+                    fileName = names.find(n => n.toLowerCase().endsWith('.xml')) || names[0];
+                }
+                const file = data.files[fileName];
+                if (!file) throw new Error('No files in GIST');
+
                 if (parseXmlToData(file.content)) {
-                    currentGistId = id;
-                    currentRawUrl = file.raw_url; // Store raw URL
-                    
-                    if(currentRawUrl) {
-                        document.getElementById('rawUrlText').textContent = currentRawUrl;
-                        document.getElementById('rawUrlContainer').classList.remove('hidden');
-                    }
-                    
+                    currentGistId = data.id;
+                    currentGistUrl = data.html_url || `https://gist.github.com/${id}`;
+                    currentGistFilename = fileName;
+                    currentRawUrl = file.raw_url || null;
+
+                    updateGistLinkDisplay();
                     currentFragmentIndex = 0;
+                    skipNextAutoSave = true; // no pointless re-save right after load
                     renderFragment();
                     updateXmlOutput();
                     hideLoadModal();
-                    showToast('Loaded');
+                    setStatus('GIST loaded');
+                    showToast('GIST loaded');
+                } else {
+                    setStatus('Ready');
                 }
             } catch (e) {
+                setStatus('Ready');
                 showToast('Load failed: ' + e.message, true);
             }
         }
@@ -915,6 +1082,7 @@
 
                 if (data.choices && data.choices[0] && data.choices[0].message) {
                     document.getElementById('xmlEditor').value = data.choices[0].message.content;
+                    scheduleAutoSave(); // auto-save DeepSeek's changes too
                     showToast('Response received. Check XML.');
                 } else {
                     throw new Error('Invalid response structure');
@@ -932,6 +1100,10 @@
             t.textContent = msg;
             t.className = 'toast show' + (isErr ? ' error' : '');
             setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function setStatus(text) {
+            document.getElementById('statusText').textContent = text;
         }
 
         function showLoadModal() { document.getElementById('loadModal').classList.add('show'); }
