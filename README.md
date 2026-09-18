@@ -4,12 +4,7 @@ https://tregubovvn.github.io/rt/editor/index.html
 
 https://tregubovvn.github.io/rt/right_answer/index.html?xml=https://tregubovvn.github.io/rt/text2.xml 
 
-https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/text2.xml 
-
-https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/text3.xml
-
-https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/text4.xml
-
+https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/tsup/1.xml 
 
 Представь информацию из текста в данном в приведенном ниже формате. Фрагменты выделяй по абзацам. Сам придумай вопросы, которые должны позволить определить, что человек точно и полностью понимает смысл и суть прочитанного абзаца. Для каждого абзаца должно быть не менее 4 вопросов, два из которых с вписыванием ответа (для вписывания желательно использовать конкретный термин, связанный с темой фрагмента). Сохраняй в вопросах преемственность с вопросами для конспекта. Для каждой темы отдельный <readingTest> .    Результаты выведи в форматированном XML и лучше в отдельных файлах.  Не спрашивай продолжение, выполни всю задачу. 
 ```xml
