@@ -521,11 +521,12 @@
                 
     // Если тег <topic> отсутствует — ничего не делаем
 
-//    const topicElement = xml.querySelector('topicName');
- //   if (topicElement) {
- //     document.getElementById("myLabel").textContent = "Тема: " + topicElement;
-  //  }
-           
+   const topicElement = xml.querySelector('topicName');
+   if (topicElement) {
+    document.getElementById("topicName").textContent = "Тема: " + topicElement.textContent;
+   }
+
+            
             frags.forEach(f => {
                 const txt = f.querySelector('text').textContent;
                 const qList = [];
