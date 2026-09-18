@@ -358,9 +358,9 @@
         </div>
 
         <button class="btn" id="btn-start" disabled onclick="startTest()">Начать чтение</button>
-        <!-- Новая кнопка для пропуска чтения -->
+        <!-- кнопка для пропуска чтения -->
         <button class="btn btn-secondary" id="btn-skip" disabled onclick="startFinalTestDirectly()">Сдать финальный тест без чтения</button>
-        <button class="btn btn-secondary" id="btn-teacher" disabled onclick="redirectWithFileParam()">Для преподавателя </button>
+        <button class="btn btn-secondary" id="btn-teacher" disabled onclick="redirectWithFileParam()">Для преподавателя</button>
         
     </div>
 
@@ -524,9 +524,8 @@
     if (topicElement) {
       document.getElementById("myLabel").textContent = "Тема: " + topicElement.textContent;
     }
-        
-    document.getElementById("topicName").textContent = "Тема: " + 
-            
+      
+           
             frags.forEach(f => {
                 const txt = f.querySelector('text').textContent;
                 const qList = [];
