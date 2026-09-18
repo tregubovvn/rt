@@ -349,7 +349,7 @@
         </div>
 
         <div class="input-group">
-            <label>Источник данных</label>
+            <label id="topicName">Тема: </label>
             <input type="file" id="file-input" accept=".xml" style="display:none;">
             <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">
                 <span id="file-btn-text">Выбрать XML файл</span>
@@ -517,6 +517,8 @@
             App.fragments = [];
             const frags = xml.querySelectorAll('fragment');
             if (frags.length === 0) console.warn("No fragments found");
+            topicName.text = f.querySelector('topicName').textContent;
+
             
             frags.forEach(f => {
                 const txt = f.querySelector('text').textContent;
@@ -538,8 +540,8 @@
                 });
                 App.fragments.push({
                     text: txt,
-                    tExc: parseInt(f.getAttribute('timeExcellent')) || 30,
-                    tGood: parseInt(f.getAttribute('timeGood')) || 60,
+                    tExc: parseInt(f.getAttribute('timeExcellent')) || 120,
+                    tGood: parseInt(f.getAttribute('timeGood')) || 200,
                     questions: qList
                 });
             });
