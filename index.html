@@ -517,8 +517,16 @@
             App.fragments = [];
             const frags = xml.querySelectorAll('fragment');
             if (frags.length === 0) console.warn("No fragments found");
+
+                
+    // Если тег <topic> отсутствует — ничего не делаем
+    const topicElement = xml.querySelector('topicName').textContent;
+    if (topicElement) {
+      document.getElementById("myLabel").textContent =
+        "Тема: " + topicElement.textContent;
+    }
         
-    document.getElementById("topicName").textContent = "Тема: " + xml.querySelector('topicName').textContent
+    document.getElementById("topicName").textContent = "Тема: " + 
             
             frags.forEach(f => {
                 const txt = f.querySelector('text').textContent;
