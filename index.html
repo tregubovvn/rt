@@ -517,7 +517,7 @@
             App.fragments = [];
             const frags = xml.querySelectorAll('fragment');
             if (frags.length === 0) console.warn("No fragments found");
-            topicName.text = f.querySelector('topicName').textContent;
+            topicName.text = xml.querySelector('topicName').textContent;
 
             
             frags.forEach(f => {
