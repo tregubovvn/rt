@@ -1,5 +1,11 @@
 # RE:AD — Система Активного Чтения
 
+**RE:AD** — это веб-приложение для осмысленного изучения текста, разработанное для образовательных целей. Приложение помогает студентам глубже погружаться в материал, используя методику поэтапного чтения с промежуточным и итоговым контролем знаний.
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+
 https://tregubovvn.github.io/rt/editor/index.html
 
 https://tregubovvn.github.io/rt/right_answer/index.html?xml=https://tregubovvn.github.io/rt/text2.xml 
@@ -8,10 +14,7 @@ https://tregubovvn.github.io/rt/index.html?file=https://tregubovvn.github.io/rt/
 
 https://gist.github.com/tregubovvn/e837aa6949f0b20dee3925983ba2f424 
 
-**RE:AD** — это веб-приложение для осмысленного изучения текста, разработанное для образовательных целей. Приложение помогает студентам глубже погружаться в материал, используя методику поэтапного чтения с промежуточным и итоговым контролем знаний.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
 
 ## 📖 Оглавление
 
