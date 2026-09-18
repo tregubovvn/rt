@@ -517,8 +517,8 @@
             App.fragments = [];
             const frags = xml.querySelectorAll('fragment');
             if (frags.length === 0) console.warn("No fragments found");
-            topicName.text =  'dssdsddsdsds'; //xml.querySelector('topicName').textContent;
-
+            .text =  'dssdsddsdsds'; //xml.querySelector('topicName').textContent;
+        document.getElementById("topicName").textContent = "Тема: " + xml.querySelector('topicName').textContent
             
             frags.forEach(f => {
                 const txt = f.querySelector('text').textContent;
