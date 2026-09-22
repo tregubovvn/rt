@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reading Test Editor   </title>
+    <title>Редактор тестов для RE:AD</title>
     <style>
         /* Reset & Base */
         *, *::before, *::after { box-sizing: border-box; }
@@ -413,7 +413,7 @@
 
         <div class="header-tokens">
             <div class="token-group">
-                <label class="label" style="white-space: nowrap;">Topic Name:</label>
+                <label class="label" style="white-space: nowrap;">Название темы:</label>
                 <input type="text" id="topicName" class="input-base" placeholder="Enter topic name..." oninput="updateTopicName()">
             </div>
             <div class="token-group">
@@ -434,11 +434,11 @@
             <div class="center-container">
                 <!-- Navigation -->
                 <div class="nav-bar">
-                    <button id="prevBtn" class="nav-btn" onclick="prevFragment()" disabled>Prev</button>
+                    <button id="prevBtn" class="nav-btn" onclick="prevFragment()" disabled>Предыдущий</button>
                     <div id="fragmentTabs" style="display: flex; gap: 4px;"></div>
-                    <button id="nextBtn" class="nav-btn" onclick="nextFragment()">Next</button>
+                    <button id="nextBtn" class="nav-btn" onclick="nextFragment()">Следующий</button>
                     <div style="flex:1"></div>
-                    <button class="btn btn-sm" onclick="addFragment()">+ Add Fragment</button>
+                    <button class="btn btn-sm" onclick="addFragment()">+ Добавить фрагмент</button>
                 </div>
 
                 <!-- Fragment Editor -->
@@ -452,11 +452,11 @@
 
                     <div class="settings-grid">
                         <div>
-                            <label class="label">Time Excellent (sec)</label>
+                            <label class="label">Время на отлично (с.)</label>
                             <input type="number" id="timeExcellent" class="input-base" onchange="updateFragment()">
                         </div>
                         <div>
-                            <label class="label">Time Good (sec)</label>
+                            <label class="label">Время на хорошо (sec)</label>
                             <input type="number" id="timeGood" class="input-base" onchange="updateFragment()">
                         </div>
                     </div>
@@ -468,10 +468,10 @@
 
                     <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="font-size: 1rem; font-weight: 600;">Questions</h3>
+                            <h3 style="font-size: 1rem; font-weight: 600;">Вопросы</h3>
                             <div class="flex-gap">
-                                <button class="btn btn-sm" onclick="addQuestion('choice')">+ Choice</button>
-                                <button class="btn btn-sm" onclick="addQuestion('input')">+ Input</button>
+                                <button class="btn btn-sm" onclick="addQuestion('choice')">+ Вопросы на выбор</button>
+                                <button class="btn btn-sm" onclick="addQuestion('input')">+ Вопросы на ввод</button>
                             </div>
                         </div>
                         <div id="questionsContainer"></div>
@@ -484,13 +484,13 @@
 
         <div class="xml-panel" id="xmlPanel">
             <div class="xml-header">
-                <span>XML Output</span>
+                <span>XML</span>
                 <div class="flex-gap">
-                    <button class="btn btn-sm" onclick="document.getElementById('xmlFileInput').click()">Load File</button>
+                    <button class="btn btn-sm" onclick="document.getElementById('xmlFileInput').click()">Загрузить файл</button>
                     <input type="file" id="xmlFileInput" accept=".xml,text/xml,application/xml" style="display: none;" onchange="loadXmlFromFile(this)">
                     <button class="btn btn-sm btn-ai" onclick="askDeepSeek()">Ask DeepSeek</button>
-                    <button class="btn btn-sm" onclick="copyXml()">Copy</button>
-                    <button class="btn btn-sm" onclick="applyXmlChanges()">Apply Changes</button>
+                    <button class="btn btn-sm" onclick="copyXml()">Копировать</button>
+                    <button class="btn btn-sm" onclick="applyXmlChanges()">Обновить</button>
                 </div>
             </div>
             <textarea id="xmlEditor" class="xml-textarea" spellcheck="false" oninput="onXmlManualEdit()"></textarea>
@@ -507,13 +507,13 @@
     <!-- Modal -->
     <div class="modal-overlay" id="loadModal">
         <div class="modal">
-            <h3 style="margin-bottom: 1rem; font-weight: 600;">Load from GitHub Gist</h3>
+            <h3 style="margin-bottom: 1rem; font-weight: 600;">Загрзить из GitHub Gist</h3>
             <label class="label">GIST Link</label>
             <input type="text" id="loadGistId" class="input-base" placeholder="https://gist.github.com/user/abc123..." style="margin-bottom: 0.5rem;">
-            <p style="font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 1rem;">Insert a full GIST link (or raw link, or just the Gist ID).</p>
+            <p style="font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 1rem;">Вставьте ссылку на задание (or raw link, or just the Gist ID).</p>
             <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button class="btn" onclick="hideLoadModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="loadFromGist()">Load</button>
+                <button class="btn" onclick="hideLoadModal()">Отмена</button>
+                <button class="btn btn-primary" onclick="loadFromGist()">Щагрузить</button>
             </div>
         </div>
     </div>
