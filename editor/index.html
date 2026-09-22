@@ -970,6 +970,10 @@
             }
 
             const taskUrl = 'https://tregubovvn.github.io/rt/index.html?file=' + encodeURIComponent(currentRawUrl);
+
+            navigator.clipboard.writeText(taskUrl);
+            showToast('GIST link copied');
+            
             try { navigator.clipboard.writeText(taskUrl); } catch (e) {}
             if (win) { win.opener = null; win.location.href = taskUrl; }
             else { window.open(taskUrl, '_blank'); }
