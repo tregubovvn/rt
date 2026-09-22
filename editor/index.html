@@ -389,8 +389,8 @@
                 <h1 style="font-size: 1.25rem; font-weight: 700; letter-spacing: -0.5px;">Reading Test Editor</h1>
             </div>
             <div class="flex-gap">
-                <button class="btn" onclick="showLoadModal()">Load GIST</button>
-                <button class="btn btn-primary" onclick="createNewGist()">New GIST</button>
+                <button class="btn" onclick="showLoadModal()">Загрузить задание</button>
+                <button class="btn btn-primary" onclick="createNewGist()">Новое задание</button>
             </div>
         </div>
         
@@ -420,10 +420,10 @@
                 <label class="label" style="white-space: nowrap;">GIST:</label>
                 <div id="gistLinkContainer" class="raw-url-display hidden" style="flex: 1; max-width: none;">
                     <a id="gistLinkText" class="url-text" style="flex: 1; min-width: 0;" href="#" target="_blank" title="Open GIST in a new tab"></a>
-                    <button class="btn-icon" onclick="copyGistUrl()" title="Copy GIST link">
+                    <button class="btn-icon" onclick="copyGistUrl()" title="Скопировать ссылку на задание">
                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                     </button>
-                    <button class="btn btn-sm" onclick="openTask()" title="Open task and copy its link">Open Task</button>
+                    <button class="btn btn-sm" onclick="openTask()" title="Open task and copy its link">Открыть задание</button>
                 </div>
             </div>
         </div>
@@ -444,7 +444,7 @@
                 <!-- Fragment Editor -->
                 <div class="card" id="fragmentCard">
                     <div class="card-header">
-                        <h2>Fragment <span id="fragmentNumber">1</span></h2>
+                        <h2>Фрагмент <span id="fragmentNumber">1</span></h2>
                         <button class="btn-icon" onclick="deleteCurrentFragment()" title="Delete">
                             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
@@ -953,6 +953,7 @@
         async function openTask() {
             if (!currentGistId) return showToast('Create or load a GIST first', true);
 
+            copyGistUrl();
             // Open the window synchronously (to avoid popup blocking), then flush pending changes
             const win = window.open('about:blank', '_blank');
             try {
